@@ -79,6 +79,7 @@ CREATE TABLE trip_gear_items (
   PRIMARY KEY (trip_id, item_name)
 );
 
+-- ทุกบันทึกปลาต้องอยู่ในทริป ผู้ใช้จึงต้องสร้าง trip_plans ก่อนเสมอ
 CREATE TABLE catch_logs (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   trip_id BIGINT NOT NULL REFERENCES trip_plans(id) ON DELETE CASCADE,

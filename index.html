@@ -40,7 +40,7 @@
         <header class="topbar">
           <button class="menu-button" aria-label="เปิดเมนู">☰</button>
           <div class="location"><span class="pin">⌖</span><div><b>หาดตะโละกาโปร์</b><small>ปัตตานี</small></div><span class="chevron">⌄</span></div>
-          <div class="top-actions"><button class="date-control">▣ <span>พฤ. 7 ส.ค. 2569</span>⌄</button><button class="notification" aria-label="การแจ้งเตือน">♧<em></em></button></div>
+          <div class="top-actions"><button class="date-control">▣ <span id="todayLabel">7 ส.ค. 2569</span>⌄</button><button class="notification" aria-label="การแจ้งเตือน">♧<em></em></button></div>
         </header>
 
         <section id="overview" class="hero-grid">
@@ -106,16 +106,9 @@
       </section>
       <section class="calendar-step" id="calendarStep" hidden>
         <div class="calendar-context"><span>2</span><div><b id="selectedSpotLabel">อ่าวปัตตานี</b><small>คะแนนรวม น้ำ, Solunar, ลม, คลื่น และฝน</small></div><button class="change-spot">เปลี่ยนหมาย</button></div>
-        <div class="calendar-heading"><button class="month-control" aria-label="เดือนก่อนหน้า">‹</button><h3>สิงหาคม <small>2569</small></h3><button class="month-control" aria-label="เดือนถัดไป">›</button></div>
+        <div class="calendar-heading"><button class="month-control" aria-label="เดือนก่อนหน้า" disabled>‹</button><h3><span id="calendarMonth">สิงหาคม</span> <small id="calendarYear">2569</small></h3><button class="month-control" aria-label="เดือนถัดไป" disabled>›</button></div>
         <div class="calendar-week"><span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span></div>
-        <div class="calendar-grid" aria-label="ปฏิทินพยากรณ์เดือนสิงหาคม 2569">
-          <button class="blank" disabled></button><button class="blank" disabled></button><button class="blank" disabled></button><button class="blank" disabled></button>
-          <button class="day good"><b>1</b><span>78</span></button><button class="day fair"><b>2</b><span>65</span></button><button class="day fair"><b>3</b><span>61</span></button>
-          <button class="day poor"><b>4</b><span>42</span></button><button class="day fair"><b>5</b><span>67</span></button><button class="day good"><b>6</b><span>74</span></button><button class="day today"><b>7</b><span>82</span></button><button class="day excellent"><b>8</b><span>91</span></button><button class="day excellent"><b>9</b><span>88</span></button><button class="day good"><b>10</b><span>79</span></button>
-          <button class="day fair"><b>11</b><span>63</span></button><button class="day fair"><b>12</b><span>69</span></button><button class="day good"><b>13</b><span>76</span></button><button class="day good"><b>14</b><span>80</span></button><button class="day excellent"><b>15</b><span>94</span></button><button class="day excellent"><b>16</b><span>89</span></button><button class="day good"><b>17</b><span>75</span></button>
-          <button class="day fair"><b>18</b><span>68</span></button><button class="day poor"><b>19</b><span>49</span></button><button class="day fair"><b>20</b><span>64</span></button><button class="day good"><b>21</b><span>77</span></button><button class="day good"><b>22</b><span>83</span></button><button class="day excellent"><b>23</b><span>90</span></button><button class="day good"><b>24</b><span>73</span></button>
-          <button class="day fair"><b>25</b><span>66</span></button><button class="day poor"><b>26</b><span>45</span></button><button class="day fair"><b>27</b><span>62</span></button><button class="day good"><b>28</b><span>76</span></button><button class="day good"><b>29</b><span>81</span></button><button class="day excellent"><b>30</b><span>87</span></button><button class="day good"><b>31</b><span>78</span></button>
-        </div>
+        <div class="calendar-grid" id="calendarGrid" aria-label="ปฏิทินพยากรณ์รายวัน"></div>
         <div class="calendar-legend"><span><i class="excellent-key"></i>ยอดเยี่ยม 85+</span><span><i class="good-key"></i>ดี 70-84</span><span><i class="fair-key"></i>พอใช้ 55-69</span><span><i class="poor-key"></i>ไม่แนะนำ &lt;55</span></div>
         <div class="day-detail"><div><p class="eyebrow">เลือกวัน</p><b id="pickedDate">ศ. 7 ส.ค. · คะแนน 82/100</b><small id="pickedReason">น้ำกำลังเดิน ลมเบา เหมาะตกปลากะพง</small></div><button id="saveTrip">+ บันทึกทริปนี้</button></div>
         <div class="depth-note"><span>≋</span><p><b>ชั้นข้อมูลความลึกพร้อมผูกกับหมาย</b><small>ใช้แนวลึกอ่าวไทยและอันดามันจากกรมทรัพยากรธรณี แล้วแสดงเป็นข้อมูลประกอบเท่านั้น ไม่ใช้เพื่อการเดินเรือ</small></p></div>
