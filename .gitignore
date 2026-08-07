@@ -1,0 +1,27 @@
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Node (สำหรับตอนเพิ่ม backend/build step ในอนาคต)
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.*
+!.env.example
+
+# ข้อมูลดิบ bathymetry / shapefile ที่ไม่ควร commit
+data/raw/
+*.shp
+*.shx
+*.dbf
+*.prj
+*.gpkg
+*.tif
