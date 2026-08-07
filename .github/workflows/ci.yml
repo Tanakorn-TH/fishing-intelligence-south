@@ -12,8 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ชื่อ job = ชื่อ check ที่ branch protection บังคับ
+  # ตั้งให้บอกว่า "ตรวจอะไร" ไม่ใช่ "ตรวจด้วยอะไร" การเปลี่ยนเครื่องมือจะได้ไม่ทำ ruleset พัง
   frontend:
-    name: ตรวจ HTML / JavaScript
+    name: ตรวจฝั่งหน้าเว็บ
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +34,7 @@ jobs:
         run: npx --yes html-validate@9 index.html
 
   schema:
-    name: โหลดสคีมาเข้า MySQL 8
+    name: ตรวจสคีมาฐานข้อมูล
     runs-on: ubuntu-latest
     services:
       mysql:
