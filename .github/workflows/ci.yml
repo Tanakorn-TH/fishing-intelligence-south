@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# ยกเลิก run เก่าของ branch เดิมเมื่อมี push ใหม่
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: ตรวจ HTML / JavaScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: ตรวจไวยากรณ์ JavaScript
+        run: node --check app.js
+
+      - name: ตรวจว่า id ที่ app.js เรียกหามีอยู่จริงใน index.html
+        run: node scripts/check-dom-ids.mjs
+
+      - name: ตรวจ HTML ตามสเปกและ accessibility
+        run: npx --yes html-validate@9 index.html
+
+  schema:
+    name: โหลดสคีมาเข้า PostgreSQL + PostGIS
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fishing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGPASSWORD: postgres
+      PSQL: psql -h localhost -U postgres -d fishing -v ON_ERROR_STOP=1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ติดตั้ง psql client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      # จับบั๊กแบบที่เคยเจอ เช่น view อ้างคอลัมน์ที่ไม่มีอยู่จริง
+      - name: รัน data-model.sql บนฐานข้อมูลเปล่า
+        run: $PSQL -f data-model.sql
+
+      - name: ตรวจว่า view และ seed ใช้งานได้
+        run: |
+          $PSQL -c 'SELECT * FROM spot_planning_summary LIMIT 0;'
+          count=$($PSQL -tAc 'SELECT count(*) FROM gear_rules;')
+          if [ "$count" != "4" ]; then
+            echo "gear_rules ต้องมี 4 แถวหลัง seed แต่ได้ $count"
+            exit 1
+          fi

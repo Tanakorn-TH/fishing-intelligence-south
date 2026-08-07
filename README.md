@@ -1,5 +1,7 @@
 # คลื่นดี — Fishing Intelligence South
 
+[![CI](https://github.com/Tanakorn-TH/fishing-intelligence-south/actions/workflows/ci.yml/badge.svg)](https://github.com/Tanakorn-TH/fishing-intelligence-south/actions/workflows/ci.yml)
+
 แดชบอร์ดวางแผนทริปตกปลาสำหรับชายฝั่งภาคใต้ของไทย (อ่าวไทยและอันดามัน)
 รวมข้อมูลน้ำขึ้นน้ำลง สภาพอากาศ ช่วง Solunar และชั้นข้อมูลความลึกท้องทะเล
 ให้ออกมาเป็นคะแนน "Fishing Score" รายวันต่อหมายตกปลา
@@ -40,6 +42,11 @@ fishing-intelligence-south/
 ├── app.js                # ตัวจัดการ interaction: nav, planner, ปฏิทิน, toast
 ├── data-model.sql        # สคีมา PostgreSQL + PostGIS พร้อม seed ของ gear_rules
 ├── BATHYMETRY_IMPORT.md  # ขั้นตอนนำเข้าข้อมูลความลึกท้องทะเลจากกรมทรัพยากรธรณี
+├── CONTRIBUTING.md       # แนวทางร่วมพัฒนา กติกา PR และสิ่งที่ CI ตรวจ
+├── scripts/
+│   └── check-dom-ids.mjs # ตรวจว่า id ที่ app.js เรียกหา มีจริงใน index.html
+├── .htmlvalidate.json    # ชุดกฎตรวจ HTML
+├── .github/workflows/    # GitHub Actions
 └── README.md
 ```
 
@@ -53,6 +60,11 @@ python -m http.server 5173
 ```
 
 แล้วเปิด <http://localhost:5173>
+
+## ร่วมพัฒนา
+
+อ่าน [CONTRIBUTING.md](CONTRIBUTING.md) ก่อนเปิด PR — มีกติกา branch, สิ่งที่ CI ตรวจ,
+วิธีรันตัวตรวจเองในเครื่อง และรายการหนี้ทางเทคนิคที่รู้อยู่แล้ว
 
 ---
 
