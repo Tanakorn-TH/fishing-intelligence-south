@@ -1,6 +1,296 @@
 {
  "places": [
   {
+   "name": "ชุมพร",
+   "name_en": "Chumphon",
+   "province": "จังหวัดชุมพร",
+   "province_plain": "ชุมพร",
+   "lat": 10.4957,
+   "lon": 99.1797,
+   "kind": "province",
+   "code": 86
+  },
+  {
+   "name": "ท่าแซะ",
+   "name_en": "Tha Sae",
+   "province": "จังหวัดชุมพร",
+   "province_plain": "ชุมพร",
+   "lat": 10.6646,
+   "lon": 99.1728,
+   "kind": "district",
+   "code": 8602
+  },
+  {
+   "name": "ปะทิว",
+   "name_en": "Pathio",
+   "province": "จังหวัดชุมพร",
+   "province_plain": "ชุมพร",
+   "lat": 10.7091,
+   "lon": 99.3182,
+   "kind": "district",
+   "code": 8603
+  },
+  {
+   "name": "ละแม",
+   "name_en": "Lamae",
+   "province": "จังหวัดชุมพร",
+   "province_plain": "ชุมพร",
+   "lat": 9.7679,
+   "lon": 99.0926,
+   "kind": "district",
+   "code": 8605
+  },
+  {
+   "name": "พะโต๊ะ",
+   "name_en": "Phato",
+   "province": "จังหวัดชุมพร",
+   "province_plain": "ชุมพร",
+   "lat": 9.7909,
+   "lon": 98.7766,
+   "kind": "district",
+   "code": 8606
+  },
+  {
+   "name": "สวี",
+   "name_en": "Sawi",
+   "province": "จังหวัดชุมพร",
+   "province_plain": "ชุมพร",
+   "lat": 10.2367,
+   "lon": 99.1094,
+   "kind": "district",
+   "code": 8607
+  },
+  {
+   "name": "ทุ่งตะโก",
+   "name_en": "Thung Tako",
+   "province": "จังหวัดชุมพร",
+   "province_plain": "ชุมพร",
+   "lat": 10.1102,
+   "lon": 99.0831,
+   "kind": "district",
+   "code": 8608
+  },
+  {
+   "name": "ระนอง",
+   "name_en": "Ranong",
+   "province": "จังหวัดระนอง",
+   "province_plain": "ระนอง",
+   "lat": 9.9658,
+   "lon": 98.6348,
+   "kind": "province",
+   "code": 85
+  },
+  {
+   "name": "ละอุ่น",
+   "name_en": "La-Un",
+   "province": "จังหวัดระนอง",
+   "province_plain": "ระนอง",
+   "lat": 10.1165,
+   "lon": 98.75,
+   "kind": "district",
+   "code": 8502
+  },
+  {
+   "name": "กะเปอร์",
+   "name_en": "Papoe",
+   "province": "จังหวัดระนอง",
+   "province_plain": "ระนอง",
+   "lat": 9.5852,
+   "lon": 98.5961,
+   "kind": "district",
+   "code": 8503
+  },
+  {
+   "name": "กระบุรี",
+   "name_en": "Kra Buri",
+   "province": "จังหวัดระนอง",
+   "province_plain": "ระนอง",
+   "lat": 10.4043,
+   "lon": 98.7727,
+   "kind": "district",
+   "code": 8504
+  },
+  {
+   "name": "สุขสำราญ",
+   "name_en": "Suk Samran",
+   "province": "จังหวัดระนอง",
+   "province_plain": "ระนอง",
+   "lat": 9.3446,
+   "lon": 98.429,
+   "kind": "district",
+   "code": 8505
+  },
+  {
+   "name": "สุราษฎร์ธานี",
+   "name_en": "Surat Thani",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 9.1401,
+   "lon": 99.3331,
+   "kind": "province",
+   "code": 84
+  },
+  {
+   "name": "กาญจนดิษฐ์",
+   "name_en": "Kanchanadit",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 9.1661,
+   "lon": 99.4701,
+   "kind": "district",
+   "code": 8402
+  },
+  {
+   "name": "ดอนสัก",
+   "name_en": "Don Sak",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 9.3168,
+   "lon": 99.6918,
+   "kind": "district",
+   "code": 8403
+  },
+  {
+   "name": "เกาะสมุย",
+   "name_en": "Ko Samui",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 9.5357,
+   "lon": 99.9357,
+   "kind": "district",
+   "code": 8404
+  },
+  {
+   "name": "เกาะพะงัน",
+   "name_en": "Ko Pha-Ngan",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 9.7195,
+   "lon": 99.9951,
+   "kind": "district",
+   "code": 8405
+  },
+  {
+   "name": "ไชยา",
+   "name_en": "Chaiya",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 9.3863,
+   "lon": 99.1986,
+   "kind": "district",
+   "code": 8406
+  },
+  {
+   "name": "ท่าชนะ",
+   "name_en": "Tha Chana",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 9.572,
+   "lon": 99.1659,
+   "kind": "district",
+   "code": 8407
+  },
+  {
+   "name": "คีรีรัฐนิคม",
+   "name_en": "Khiri Rat Nikhom",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 9.0302,
+   "lon": 98.9529,
+   "kind": "district",
+   "code": 8408
+  },
+  {
+   "name": "บ้านตาขุน",
+   "name_en": "Ban Ta Khun",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 8.9036,
+   "lon": 98.8845,
+   "kind": "district",
+   "code": 8409
+  },
+  {
+   "name": "พนม",
+   "name_en": "Phanom",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 8.8547,
+   "lon": 98.8127,
+   "kind": "district",
+   "code": 8410
+  },
+  {
+   "name": "ท่าฉาง",
+   "name_en": "Tha Chang",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 9.2642,
+   "lon": 99.1922,
+   "kind": "district",
+   "code": 8411
+  },
+  {
+   "name": "บ้านนาสาร",
+   "name_en": "Ban Na San",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 8.8004,
+   "lon": 99.3637,
+   "kind": "district",
+   "code": 8412
+  },
+  {
+   "name": "บ้านนาเดิม",
+   "name_en": "Ban Na Doem",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 8.8836,
+   "lon": 99.3101,
+   "kind": "district",
+   "code": 8413
+  },
+  {
+   "name": "เคียนซา",
+   "name_en": "Khian Sa",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 8.843,
+   "lon": 99.1986,
+   "kind": "district",
+   "code": 8414
+  },
+  {
+   "name": "เวียงสระ",
+   "name_en": "Wiang Sa",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 8.6358,
+   "lon": 99.3666,
+   "kind": "district",
+   "code": 8415
+  },
+  {
+   "name": "พระแสง",
+   "name_en": "Phrasaeng",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 8.5678,
+   "lon": 99.2476,
+   "kind": "district",
+   "code": 8416
+  },
+  {
+   "name": "ชัยบุรี",
+   "name_en": "Chai Buri",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 8.4622,
+   "lon": 99.0763,
+   "kind": "district",
+   "code": 8418
+  },
+  {
    "name": "นครศรีธรรมราช",
    "name_en": "Nakhon Si Thammarat",
    "province": "จังหวัดนครศรีธรรมราช",
@@ -1129,9 +1419,25 @@
    "lon": 99.3032,
    "kind": "landmark",
    "code": null
+  },
+  {
+   "name": "เกาะเต่า",
+   "name_en": "",
+   "province": "จังหวัดสุราษฎร์ธานี",
+   "province_plain": "สุราษฎร์ธานี",
+   "lat": 10.0981,
+   "lon": 99.8381,
+   "kind": "landmark",
+   "code": null
   }
  ],
  "missed": [
+  "เมืองชุมพร (ชุมพร)",
+  "หลังสวน (ชุมพร)",
+  "เมืองระนอง (ระนอง)",
+  "เมืองสุราษฎร์ธานี (สุราษฎร์ธานี)",
+  "พุนพิน (สุราษฎร์ธานี)",
+  "วิภาวดี (สุราษฎร์ธานี)",
   "เมืองนครศรีธรรมราช (นครศรีธรรมราช)",
   "สิชล (นครศรีธรรมราช)",
   "เมืองกระบี่ (กระบี่)",
@@ -1151,7 +1457,6 @@
   "กรงปินัง (ยะลา)",
   "เมืองนราธิวาส (นราธิวาส)",
   "สุไหงปาดี (นราธิวาส)",
-  "เจาะไอร้อง (นราธิวาส)",
-  "หาดใหญ่ (สงขลา) พิกัดซ้ำ"
+  "เจาะไอร้อง (นราธิวาส)"
  ]
 }
