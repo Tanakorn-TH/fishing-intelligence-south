@@ -16,14 +16,6 @@ const TH_DAY_ABBR = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.
 const TH_MONTH_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-/* ── ข้อมูลตัวอย่างที่ยังเหลืออยู่ ──────────────────────────────────────
-   ปฏิทินคะแนนยังไม่มี endpoint (ดูตาราง "สิ่งที่ยังไม่มี" ใน docs/api-contract.md)
-   ตรึงไว้ที่เดือนของชุดตัวอย่าง ปุ่มเลื่อนเดือนจึงยัง disabled อยู่
-   ทุกที่ที่แสดงตัวเลขชุดนี้ต้องมีป้าย .sample-badge กำกับเสมอ */
-const CALENDAR_YEAR = 2026;
-const CALENDAR_MONTH = 7; // 0-indexed = สิงหาคม
-const DAY_SCORES = [78, 65, 61, 42, 67, 74, 82, 91, 88, 79, 63, 69, 76, 80, 94, 89, 75, 68, 49, 64, 77, 83, 90, 73, 66, 45, 62, 76, 81, 87, 78];
-
 /* ── จุดอ้างอิงสำหรับคิวรีสภาพอากาศ ───────────────────────────────────
    ยังไม่มีหมายจริงในฐานข้อมูล (ตาราง fishing_spots ว่าง) จึงใช้พิกัดตัวอย่าง
    ชุดเดียวกับที่ระบุไว้ใน docs/api-contract.md เป็นจุดตั้งต้นของอ่าวปัตตานี
@@ -246,6 +238,36 @@ function renderSource(element, meta) {
     : escapeHtml(parts.join(' · '));
 }
 
+const FAVOURITES_KEY = 'fis.places.favourites.v1';
+const LOCATION_KEY = 'fis.location.v1';
+const GPS_ASKED_KEY = 'fis.gps.asked.v1';
+
+/* หน่วงก่อนยิงค้นหา — สั้นพอให้รู้สึกทันใจ ยาวพอไม่ยิงทุกตัวอักษรที่พิมพ์ */
+const SEARCH_DEBOUNCE_MS = 250;
+
+let spotMap = null;
+let placeRows = [];
+let favourites = [];
+let searchSeq = 0;       // กันคำตอบเก่ามาทับคำตอบใหม่ตอนพิมพ์เร็ว ๆ
+let searchTimer = null;
+
+function readJsonSetting(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function writeJsonSetting(key, value) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    /* เก็บไม่ได้ก็ใช้งานรอบนี้ได้ ไม่ต้องรบกวนผู้ใช้ */
+  }
+}
+
 /* ═══ แถบบนและคำทักทาย — คำนวณจาก Date เสมอ ═══════════════════════════ */
 
 const now = new Date();
@@ -260,15 +282,40 @@ function greetingForHour(hour) {
 }
 document.getElementById('greeting').textContent = greetingForHour(now.getHours());
 
-/* ตำแหน่งที่ใช้คิวรีตอนนี้ — เริ่มที่จุดอ้างอิง แล้วเปลี่ยนเมื่อผู้ใช้เลือกหมายจริง */
-let activeLocation = { ...REFERENCE_POINT };
+/* ตำแหน่งที่ใช้คิวรีตอนนี้
+   ลำดับ: จุดที่ผู้ใช้เคยเลือกไว้ > จุดอ้างอิง
+   ถ้ายังไม่เคยเลือกและยังไม่เคยถาม GPS จะขอตำแหน่งให้อัตโนมัติหลังหน้าโหลดเสร็จ
+   หน้าเว็บไม่รอ GPS — แสดงด้วยจุดสำรองไปก่อนแล้วค่อยขยับ เพราะการรอสิทธิ์
+   อาจกินเวลาหลายวินาที หรือผู้ใช้อาจไม่ตอบเลย */
+let activeLocation = (() => {
+  const saved = readJsonSetting(LOCATION_KEY, null);
+  if (saved && isFiniteNumber(saved.lat) && isFiniteNumber(saved.lon)) {
+    return saved;
+  }
+  return { ...REFERENCE_POINT };
+})();
+
+favourites = readJsonSetting(FAVOURITES_KEY, []);
+if (!Array.isArray(favourites)) favourites = [];
 
 function renderLocation() {
   document.getElementById('locationName').textContent = activeLocation.label;
+
+  // บอกจังหวัดและฝั่งทะเลถ้ารู้ เพราะชื่ออำเภอซ้ำกันข้ามจังหวัดได้
+  // และสองฝั่งมีสภาพคลื่นลมคนละแบบ ผู้ใช้ต้องอ่านออกว่ากำลังดูฝั่งไหน
+  const parts = [];
+  if (activeLocation.province) parts.push(String(activeLocation.province).replace('จังหวัด', 'จ.'));
+  if (activeLocation.coast) parts.push(activeLocation.coast);
+
+  if (parts.length) {
+    document.getElementById('locationCoords').textContent = parts.join(' · ');
+    return;
+  }
+
   const coords = `${roundTo(activeLocation.lat, 4)}, ${roundTo(activeLocation.lon, 4)}`;
   document.getElementById('locationCoords').textContent = activeLocation.isReference
     ? `พิกัดอ้างอิง ${coords}`
-    : `หมายที่เลือก ${coords}`;
+    : coords;
 }
 renderLocation();
 
@@ -513,6 +560,276 @@ async function loadSolunar() {
   }
 }
 retryActions.solunar = loadSolunar;
+
+/* ═══ เลือกจุด/หมาย — GET /api/places.php ══════════════════════════════
+   รายการเรียงตามระยะทางจากจุดที่ดูอยู่ ที่ติดดาวขึ้นก่อนเสมอ
+   แผนที่กับรายการเป็นมุมมองสองแบบของข้อมูลชุดเดียวกัน เลือกจากทางไหนก็ได้ผลเหมือนกัน */
+
+function isFavourite(id) {
+  return favourites.includes(id);
+}
+
+function toggleFavourite(id) {
+  favourites = isFavourite(id)
+    ? favourites.filter((item) => item !== id)
+    : favourites.concat([id]);
+  writeJsonSetting(FAVOURITES_KEY, favourites);
+  renderPlaceList();
+}
+
+/* ที่ติดดาวขึ้นบนสุด ที่เหลือคงลำดับตามระยะทางที่ API ส่งมา */
+function sortedPlaceRows() {
+  const starred = placeRows.filter((row) => isFavourite(row.id));
+  const rest = placeRows.filter((row) => !isFavourite(row.id));
+  return { starred, rest };
+}
+
+function placeRowMarkup(row) {
+  const starred = isFavourite(row.id);
+  const distance = isFiniteNumber(row.distance_km)
+    ? `<span class="place-distance">${roundTo(row.distance_km, row.distance_km < 10 ? 1 : 0)} กม.</span>`
+    : '';
+  const active = row.id === activeLocation.id;
+
+  return `<li class="place-row${active ? ' is-active' : ''}" data-place-id="${escapeHtml(row.id)}">`
+    + `<button type="button" class="place-star press" data-star="${escapeHtml(row.id)}"`
+    + ` aria-pressed="${starred ? 'true' : 'false'}" aria-label="${starred ? 'เอาดาวออกจาก' : 'ติดดาว'} ${escapeHtml(row.name)}">`
+    + `${starred ? '★' : '☆'}</button>`
+    + `<button type="button" class="place-pick press" data-pick="${escapeHtml(row.id)}">`
+    + `<span class="place-name">${escapeHtml(row.name)}</span>`
+    + `<small>${escapeHtml(row.province)}${row.coast_label ? ` · ${escapeHtml(row.coast_label)}` : ''}</small>`
+    + '</button>'
+    + distance
+    + '</li>';
+}
+
+function renderPlaceList() {
+  const list = document.getElementById('placeList');
+  const { starred, rest } = sortedPlaceRows();
+
+  if (!placeRows.length) {
+    list.innerHTML = '';
+    return;
+  }
+
+  let markup = '';
+  if (starred.length) {
+    markup += '<li class="place-group">★ ที่ติดดาวไว้</li>' + starred.map(placeRowMarkup).join('');
+    if (rest.length) markup += '<li class="place-group">เรียงตามระยะทาง</li>';
+  }
+  markup += rest.map(placeRowMarkup).join('');
+
+  list.innerHTML = markup;
+
+  if (spotMap) {
+    spotMap.setPlaces(placeRows);
+    spotMap.setSelected(activeLocation.id || null);
+  }
+}
+
+async function loadPlaces(query = '') {
+  const slot = document.getElementById('placeState');
+  const seq = ++searchSeq;
+
+  renderState(slot, { kind: 'loading', title: 'กำลังค้นหา…' });
+
+  try {
+    // ไม่ส่ง limit ตอนเปิดดูรายการ เพื่อให้ได้ครบทุกจุดตามที่ backend ตั้งใจไว้
+    // เคยส่ง 100 ไว้ตายตัว พอชุดข้อมูลโตเกินนั้น จังหวัดท้าย ๆ หายไปจากทั้งรายการและแผนที่
+    const params = { lat: activeLocation.lat, lon: activeLocation.lon };
+    if (query) {
+      params.q = query;
+      params.limit = 20;
+    }
+    const payload = await fetchJson('api/places.php', params);
+
+    // คำตอบของคำค้นเก่ามาช้ากว่าคำใหม่ได้ ทิ้งไปเลยไม่ต้องวาด
+    if (seq !== searchSeq) return;
+
+    placeRows = Array.isArray(payload.data) ? payload.data : [];
+    renderState(slot, placeRows.length ? null : {
+      kind: 'empty',
+      title: 'ไม่พบสถานที่ที่ค้นหา',
+      detail: 'ลองพิมพ์ชื่ออำเภอหรือจังหวัดแทน',
+    });
+    renderPlaceList();
+    document.getElementById('placeNotice').textContent = (payload.meta && payload.meta.notice) || '';
+  } catch (error) {
+    if (seq !== searchSeq) return;
+    placeRows = [];
+    document.getElementById('placeList').innerHTML = '';
+    renderState(slot, {
+      kind: 'error',
+      title: 'ค้นหาไม่สำเร็จ',
+      detail: error.message,
+      retry: 'places',
+    });
+  }
+}
+retryActions.places = () => loadPlaces(document.getElementById('placeSearch').value.trim());
+
+/* เปลี่ยนจุดที่กำลังดู แล้วโหลดข้อมูลทุกก้อนใหม่ */
+function applyLocation(next, { remember = true } = {}) {
+  activeLocation = next;
+  renderLocation();
+  if (remember) writeJsonSetting(LOCATION_KEY, next);
+
+  loadWeather();
+  loadSolunar();
+  loadTides();
+  loadScore();
+
+  if (spotMap) spotMap.setSelected(next.id || null);
+}
+
+function pickPlace(id) {
+  const row = placeRows.find((item) => item.id === id);
+  if (!row) return;
+
+  applyLocation({
+    id: row.id,
+    lat: row.lat,
+    lon: row.lon,
+    label: row.name,
+    province: row.province,
+    coast: row.coast_label || '',
+    isReference: false,
+  });
+
+  if (spotMap) spotMap.focus(row.lat, row.lon);
+  renderPlaceList();
+}
+
+/* ── ตำแหน่งจาก GPS ────────────────────────────────────────────────────
+   ขอครั้งแรกที่เข้าเว็บเท่านั้น ถ้าเคยเลือกจุดไว้แล้วจะไม่รบกวนอีก
+   ไม่บล็อกการแสดงผล — หน้าเว็บโหลดด้วยจุดสำรองไปก่อน แล้วค่อยขยับเมื่อได้ตำแหน่ง */
+function requestGps({ silent = false } = {}) {
+  if (!navigator.geolocation) {
+    if (!silent) showToast('อุปกรณ์นี้ไม่รองรับการหาตำแหน่ง');
+    return;
+  }
+
+  if (!silent) showToast('กำลังหาตำแหน่ง…');
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lat = roundTo(position.coords.latitude, 4);
+      const lon = roundTo(position.coords.longitude, 4);
+
+      try {
+        // แปลงพิกัดดิบเป็นชื่อที่อ่านรู้เรื่อง โดยบอกระยะห่างตรง ๆ
+        // ไม่เคลมว่าผู้ใช้อยู่ "ที่" สถานที่นั้น เพราะอาจห่างหลายสิบกิโลเมตร
+        const payload = await fetchJson('api/places.php', { lat, lon, limit: 1 });
+        const nearest = (payload.data || [])[0];
+        const inRegion = payload.meta && payload.meta.in_region;
+
+        applyLocation({
+          id: null,
+          lat,
+          lon,
+          label: nearest && inRegion ? `ใกล้ ${nearest.name}` : 'ตำแหน่งของฉัน',
+          province: nearest && inRegion ? nearest.province : '',
+          coast: nearest && inRegion ? (nearest.coast_label || '') : '',
+          isReference: false,
+          isGps: true,
+          nearestKm: nearest ? nearest.distance_km : null,
+        });
+
+        if (spotMap) {
+          spotMap.setOrigin({ lat, lon });
+          spotMap.focus(lat, lon);
+        }
+        if (!inRegion) showToast('ตำแหน่งของคุณอยู่นอกภาคใต้ ข้อมูลบางส่วนอาจไม่ครอบคลุม');
+        loadPlaces(document.getElementById('placeSearch').value.trim());
+      } catch (error) {
+        if (!silent) showToast('หาชื่อสถานที่ใกล้เคียงไม่ได้');
+      }
+    },
+    () => {
+      if (!silent) showToast('ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง เลือกจุดเองได้จากรายการ');
+    },
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+  );
+}
+
+/* คำอธิบายเส้นความลึก — สร้างจากข้อมูลจริงที่โหลดมา ไม่ได้เขียนตัวเลขตายตัวไว้
+   ถ้าวันหนึ่งเปลี่ยนระดับความลึกที่วาด คำอธิบายจะเปลี่ยนตามเอง ไม่หลุดจากกัน */
+function renderDepthLegend(depth) {
+  const legend = document.getElementById('depthLegend');
+  const levels = (depth.features || [])
+    .map((feature) => feature.properties.depth_m)
+    .filter(isFiniteNumber)
+    .sort((a, b) => a - b);
+
+  if (!levels.length) {
+    legend.hidden = true;
+    return;
+  }
+
+  legend.hidden = false;
+  legend.innerHTML = levels.map((metres) =>
+    `<span class="depth-key"><i style="border-top-color:${escapeHtml(DEPTH_COLORS[metres] || '#2b6291')}"></i>${metres}</span>`
+  ).join('') + '<span class="depth-unit">เมตร</span>';
+}
+
+/* ── การเปิด-ปิดแผงและการโต้ตอบ ───────────────────────────────────────── */
+
+async function openPlacePicker() {
+  const dialog = document.getElementById('placePicker');
+  dialog.showModal();
+
+  if (!spotMap) {
+    spotMap = new SpotMap(document.getElementById('spotMap'));
+    spotMap.onPick = pickPlace;
+    spotMap.reset();
+
+    try {
+      const response = await fetch('map/coastline-south.json');
+      if (response.ok) spotMap.setCoastline(await response.json());
+    } catch (error) {
+      /* ไม่มีชายฝั่งก็ยังเลือกจากรายการได้ แผนที่แค่ว่างเปล่า */
+    }
+
+    // เส้นความลึกเป็นของแถม โหลดไม่ได้ก็ยังเลือกหมายได้ตามปกติ
+    try {
+      const response = await fetch('map/depth-south.json');
+      if (response.ok) {
+        const depth = await response.json();
+        spotMap.setDepth(depth);
+        renderDepthLegend(depth);
+      }
+    } catch (error) {
+      /* ไม่มีเส้นความลึกก็ไม่เป็นไร แผนที่ยังใช้เลือกจุดได้ */
+    }
+    if (activeLocation.isGps) spotMap.setOrigin({ lat: activeLocation.lat, lon: activeLocation.lon });
+  }
+
+  spotMap.setSelected(activeLocation.id || null);
+  await loadPlaces(document.getElementById('placeSearch').value.trim());
+}
+
+document.getElementById('openPlacePicker').addEventListener('click', openPlacePicker);
+document.querySelector('.close-picker').addEventListener('click', () => {
+  document.getElementById('placePicker').close();
+});
+document.getElementById('mapReset').addEventListener('click', () => spotMap && spotMap.reset());
+document.getElementById('useGps').addEventListener('click', () => requestGps());
+
+document.getElementById('placeSearch').addEventListener('input', (event) => {
+  const value = event.target.value.trim();
+  window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => loadPlaces(value), SEARCH_DEBOUNCE_MS);
+});
+
+document.getElementById('placeList').addEventListener('click', (event) => {
+  const star = event.target.closest('[data-star]');
+  if (star) {
+    toggleFavourite(star.dataset.star);
+    return;
+  }
+  const pick = event.target.closest('[data-pick]');
+  if (pick) pickPlace(pick.dataset.pick);
+});
 
 /* ═══ Fishing Score — GET /api/score.php ═══════════════════════════════
    คะแนนนี้มาจากน้ำหนักที่ทีมเลือกเอง ไม่ได้ปรับจากสถิติการจับปลาจริง
@@ -1288,7 +1605,18 @@ document.getElementById('showCalendar').addEventListener('click', () => {
   document.getElementById('selectedSpotLabel').textContent = selectedSpot.name;
   spotStep.hidden = true;
   calendarStep.hidden = false;
+  loadOutlook();
 });
+
+/* ── ปฏิทินคะแนน ───────────────────────────────────────────────────────
+   คะแนนมาจาก /api/outlook.php ซึ่งใช้สูตรเดียวกับการ์ดคะแนนบนหน้าแรก
+
+   ⚠️ คิดคะแนนล่วงหน้าได้แค่ราว 7-8 วัน เพราะแบบจำลองระดับน้ำพยากรณ์ได้เท่านั้น
+   วันที่เลยจากนั้นจะไม่มีคะแนน และต้องแสดงว่า "ยังไม่รู้" ตรง ๆ
+   ห้ามเติมตัวเลขให้เต็มเดือนเพื่อความสวยงาม คนเอาไปเลือกวันออกทะเลจริง */
+
+/* คะแนนรายวันที่โหลดมาแล้ว คีย์เป็นวันที่แบบ YYYY-MM-DD */
+let outlookByDate = new Map();
 
 function scoreTier(score) {
   if (score >= 85) return 'excellent';
@@ -1297,39 +1625,63 @@ function scoreTier(score) {
   return 'poor';
 }
 
-function scoreReason(score) {
-  if (score >= 85) return 'จังหวะน้ำและ Solunar โดดเด่น เหมาะวางทริปล่วงหน้า';
-  if (score >= 70) return 'สภาพรวมดี ควรตรวจลมและคลื่นใกล้ออกเดินทาง';
-  return 'เงื่อนไขยังไม่เด่น แนะนำเลือกช่วงเวลาให้เหมาะกับหมาย';
+/* เดือนที่ปฏิทินกำลังแสดง — เริ่มที่เดือนปัจจุบันเสมอ */
+let calendarYear = now.getFullYear();
+let calendarMonth = now.getMonth();
+
+function isoFromParts(year, month, day) {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 function selectDay(day) {
   pickedDay = day;
   document.querySelector('.day.selected')?.classList.remove('selected');
   calendarGrid.querySelector(`[data-day="${day}"]`)?.classList.add('selected');
-  const date = new Date(CALENDAR_YEAR, CALENDAR_MONTH, day);
-  const score = DAY_SCORES[day - 1];
-  // ย้ำคำว่าตัวอย่างซ้ำตรงบรรทัดที่ผู้ใช้อ่านก่อนกดบันทึกทริป
-  pickedDate.textContent = `${formatThaiDate(date)} · คะแนนตัวอย่าง ${score}/100`;
-  pickedReason.textContent = `${scoreReason(score)} (คำอธิบายจากคะแนนตัวอย่าง ยังไม่ใช่ผลคำนวณจริง)`;
+
+  const date = new Date(calendarYear, calendarMonth, day);
+  const entry = outlookByDate.get(isoFromParts(calendarYear, calendarMonth, day));
+
+  if (!entry || !isFiniteNumber(entry.score)) {
+    pickedDate.textContent = formatThaiDate(date);
+    pickedReason.textContent = entry && entry.reason
+      ? entry.reason
+      : 'ยังคิดคะแนนของวันนี้ไม่ได้ เพราะแบบจำลองน้ำพยากรณ์ล่วงหน้าได้จำกัด';
+    return;
+  }
+
+  pickedDate.textContent = `${formatThaiDate(date)} · ${entry.score}/100 ${entry.label}`;
+
+  const parts = [];
+  if (entry.best_style_name) parts.push(`เด่นที่ ${entry.best_style_name}`);
+  if (entry.safety === 'dangerous') parts.push('⚠ ลมหรือคลื่นแรงเกินเกณฑ์เรือเล็ก');
+  else if (entry.safety === 'caution') parts.push('ต้องระวังลมและคลื่น');
+  pickedReason.textContent = parts.join(' · ') || 'ดูรายละเอียดที่การ์ดคะแนนหน้าแรก';
 }
 
 function buildCalendar() {
-  document.getElementById('calendarMonth').textContent = TH_MONTH_FULL[CALENDAR_MONTH];
-  document.getElementById('calendarYear').textContent = CALENDAR_YEAR + 543;
+  document.getElementById('calendarMonth').textContent = TH_MONTH_FULL[calendarMonth];
+  document.getElementById('calendarYear').textContent = calendarYear + 543;
 
-  const isCurrentMonth = now.getFullYear() === CALENDAR_YEAR && now.getMonth() === CALENDAR_MONTH;
-  const leadingBlanks = new Date(CALENDAR_YEAR, CALENDAR_MONTH, 1).getDay();
+  const isCurrentMonth = now.getFullYear() === calendarYear && now.getMonth() === calendarMonth;
+  const leadingBlanks = new Date(calendarYear, calendarMonth, 1).getDay();
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
   const markup = [];
 
   for (let i = 0; i < leadingBlanks; i += 1) {
     markup.push('<button type="button" class="blank" disabled></button>');
   }
-  DAY_SCORES.forEach((score, index) => {
-    const day = index + 1;
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const entry = outlookByDate.get(isoFromParts(calendarYear, calendarMonth, day));
     const today = isCurrentMonth && now.getDate() === day ? ' today' : '';
-    markup.push(`<button type="button" class="day press ${scoreTier(score)}${today}" data-day="${day}"><b>${day}</b><span>${score}</span></button>`);
-  });
+
+    // ไม่มีคะแนน = ยังไม่รู้ ไม่ใช่คะแนนต่ำ จึงไม่ใส่สีระดับใด ๆ และแสดงขีดแทนตัวเลข
+    const tier = entry && isFiniteNumber(entry.score) ? scoreTier(entry.score) : 'unknown';
+    const value = entry && isFiniteNumber(entry.score) ? String(entry.score) : '–';
+
+    markup.push(`<button type="button" class="day press ${tier}${today}" data-day="${day}">`
+      + `<b>${day}</b><span>${value}</span></button>`);
+  }
 
   calendarGrid.innerHTML = markup.join('');
   calendarGrid.querySelectorAll('.day').forEach((button) => {
@@ -1338,6 +1690,36 @@ function buildCalendar() {
 
   selectDay(isCurrentMonth ? now.getDate() : 1);
 }
+
+async function loadOutlook() {
+  const slot = document.getElementById('calendarState');
+  renderState(slot, { kind: 'loading', title: 'กำลังคิดคะแนนล่วงหน้า…' });
+
+  try {
+    const payload = await fetchJson('api/outlook.php', {
+      lat: activeLocation.lat,
+      lon: activeLocation.lon,
+    });
+
+    outlookByDate = new Map();
+    (payload.data.days || []).forEach((entry) => outlookByDate.set(entry.date, entry));
+
+    renderState(slot, null);
+    document.getElementById('calendarNotice').textContent =
+      `${(payload.meta && payload.meta.horizon_note) || ''} วันที่ยังไม่มีคะแนนจะแสดงเป็นขีด`;
+    buildCalendar();
+  } catch (error) {
+    outlookByDate = new Map();
+    renderState(slot, {
+      kind: 'error',
+      title: 'ยังคิดคะแนนล่วงหน้าไม่ได้',
+      detail: error.message,
+      retry: 'outlook',
+    });
+    buildCalendar();
+  }
+}
+retryActions.outlook = loadOutlook;
 
 buildCalendar();
 
@@ -1348,7 +1730,7 @@ document.getElementById('saveTrip').addEventListener('click', () => {
   }
   savedTrip = {
     spot: selectedSpot.name,
-    label: formatThaiDate(new Date(CALENDAR_YEAR, CALENDAR_MONTH, pickedDay)),
+    label: formatThaiDate(new Date(calendarYear, calendarMonth, pickedDay)),
   };
   planner.close();
   showToast(`บันทึกทริป ${savedTrip.spot} · ${savedTrip.label} แล้ว`);
@@ -1376,3 +1758,12 @@ loadTides();
 loadScore();
 loadSpots();
 loadGear();
+
+/* ขอตำแหน่งครั้งแรกที่เข้าเว็บเท่านั้น
+   เคยเลือกจุดไว้แล้ว = เคารพการเลือกนั้น ไม่ต้องถามอีก
+   เคยถามแล้วไม่ว่าผลเป็นอย่างไร = ไม่ถามซ้ำ คนที่กดปฏิเสธไปแล้วจะได้ไม่โดนรบกวนทุกครั้ง
+   อยากใช้เมื่อไหร่กดปุ่ม "ตำแหน่งของฉัน" ในแผงเลือกจุดได้ตลอด */
+if (!readJsonSetting(LOCATION_KEY, null) && !readJsonSetting(GPS_ASKED_KEY, false)) {
+  writeJsonSetting(GPS_ASKED_KEY, true);
+  requestGps({ silent: true });
+}

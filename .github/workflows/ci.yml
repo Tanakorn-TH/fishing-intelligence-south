@@ -189,6 +189,13 @@ jobs:
       - name: ทดสอบ Fishing Score
         run: API_BASE=http://127.0.0.1:8080 php tests/score-test.php
 
+      # places ใช้ชุดข้อมูลในไฟล์เป็นหลัก จะผ่านได้แม้ geocoder ล่ม
+      # แต่ยังออกเน็ตในบางเส้นทาง จึงอยู่ใน job นี้ ไม่ใช่ job ที่บล็อกการ merge
+      # ตรวจสำคัญของชุดนี้คือพิกัดทุกจุดต้องอยู่ในกรอบภาคใต้จริง
+      # ถ้าชุดข้อมูลถูกสร้างใหม่แล้วมีค่าหลุดออกนอกภาค จะจับได้ที่นี่
+      - name: ทดสอบรายชื่อสถานที่
+        run: API_BASE=http://127.0.0.1:8080 php tests/places-test.php
+
       - name: log ของเซิร์ฟเวอร์ ถ้าเทสต์ล้ม
         if: failure()
         run: cat /tmp/php-server.log

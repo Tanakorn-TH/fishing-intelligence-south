@@ -25,3 +25,7 @@ data/raw/
 *.prj
 *.gpkg
 *.tif
+
+# กริดความลึกดิบที่ดึงมาสร้างเส้น — 8 MB ไม่ต้องเก็บใน repo
+# สร้างใหม่ได้ด้วย: node scripts/build-bathymetry.mjs --refresh
+scripts/bathy-south.csv

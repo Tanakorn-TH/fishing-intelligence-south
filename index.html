@@ -42,7 +42,7 @@
       <main class="page-in">
         <header class="topbar">
           <button type="button" class="menu-button press" aria-label="เปิดเมนู">☰</button>
-          <div class="location"><span class="pin">⌖</span><div><b id="locationName">ปัตตานี</b><small id="locationCoords">พิกัดอ้างอิง —</small></div><span class="chevron">⌄</span></div>
+          <button type="button" class="location press" id="openPlacePicker" aria-haspopup="dialog"><span class="pin">⌖</span><span class="location-text"><b id="locationName">ปัตตานี</b><small id="locationCoords">พิกัดอ้างอิง —</small></span><span class="chevron">⌄</span></button>
           <div class="top-actions"><button type="button" class="date-control press">▣ <span id="todayLabel">—</span>⌄</button><button type="button" class="notification press" aria-label="การแจ้งเตือน">♧<em></em></button></div>
         </header>
 
@@ -157,20 +157,47 @@
       </section>
       <section class="calendar-step" id="calendarStep" hidden>
         <div class="calendar-context"><span>2</span><div><b id="selectedSpotLabel">—</b><small>คะแนนรวม น้ำ, Solunar, ลม, คลื่น และฝน</small></div><button type="button" class="change-spot press">เปลี่ยนหมาย</button></div>
-        <div class="calendar-sample is-sample">
-          <span class="sample-badge"><span aria-hidden="true">▲</span> ข้อมูลตัวอย่าง</span>
-          <p class="sample-note">คะแนนทุกวันในปฏิทินนี้เป็นชุดตัวอย่าง ยังไม่มี API คะแนนรายวัน <b>ห้ามใช้เลือกวันออกทะเลจริง</b></p>
-        </div>
+        <p class="datum-note" id="calendarNotice"></p>
+        <div class="state-slot" id="calendarState"></div>
         <div class="calendar-heading"><button type="button" class="month-control press" aria-label="เดือนก่อนหน้า" disabled>‹</button><h3><span id="calendarMonth">—</span> <small id="calendarYear">—</small></h3><button type="button" class="month-control press" aria-label="เดือนถัดไป" disabled>›</button></div>
         <div class="calendar-week"><span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span></div>
-        <div class="calendar-grid-wrap sample-veil">
-          <div class="calendar-grid" id="calendarGrid" role="group" aria-label="ปฏิทินพยากรณ์รายวัน (คะแนนเป็นข้อมูลตัวอย่าง)"></div>
+        <div class="calendar-grid-wrap">
+          <div class="calendar-grid" id="calendarGrid" role="group" aria-label="ปฏิทินคะแนนรายวัน"></div>
         </div>
         <div class="calendar-legend"><span><i class="excellent-key"></i>ยอดเยี่ยม 85+</span><span><i class="good-key"></i>ดี 70-84</span><span><i class="fair-key"></i>พอใช้ 55-69</span><span><i class="poor-key"></i>ไม่แนะนำ &lt;55</span></div>
         <div class="day-detail"><div><p class="eyebrow">เลือกวัน</p><b id="pickedDate">—</b><small id="pickedReason">เลือกวันจากปฏิทินด้านบน</small></div><button type="button" id="saveTrip" class="press">+ บันทึกทริปนี้</button></div>
-        <div class="depth-note"><span>≋</span><p><b>ชั้นข้อมูลความลึกพร้อมผูกกับหมาย</b><small>ใช้แนวลึกอ่าวไทยและอันดามันจากกรมทรัพยากรธรณี แล้วแสดงเป็นข้อมูลประกอบเท่านั้น ไม่ใช้เพื่อการเดินเรือ</small></p></div>
+        <div class="depth-note"><span>≋</span><p><b>เส้นความลึกดูได้บนแผนที่เลือกหมาย</b><small>เส้นประคือความลึกโดยประมาณจากแบบจำลองความละเอียดต่ำ ใช้ดูภาพรวมพื้นท้องทะเลเท่านั้น ไม่ใช่แผนที่เดินเรือ</small></p></div>
       </section>
     </dialog>
+    <dialog class="place-picker" id="placePicker" aria-labelledby="placePickerTitle">
+      <div class="picker-head">
+        <div><p class="eyebrow">SPOT</p><h2 id="placePickerTitle">เลือกจุดดูสภาพอากาศ</h2></div>
+        <button type="button" class="close-picker press" aria-label="ปิด">✕</button>
+      </div>
+
+      <div class="picker-tools">
+        <input type="search" id="placeSearch" placeholder="ค้นหาอำเภอหรือจังหวัด" autocomplete="off" enterkeyhint="search" />
+        <button type="button" class="use-gps press" id="useGps">⌖ ตำแหน่งของฉัน</button>
+      </div>
+
+      <div class="map-wrap">
+        <svg class="spot-map" id="spotMap" role="img" aria-labelledby="spotMapDesc" preserveAspectRatio="xMidYMid slice">
+          <title id="spotMapDesc">แผนที่ภาคใต้แสดงจุดที่เลือกดูสภาพอากาศได้</title>
+          <g id="mapLand"></g>
+          <g id="mapDepth"></g>
+          <g id="mapPins"></g>
+        </svg>
+        <button type="button" class="map-reset press" id="mapReset">ดูทั้งภาค</button>
+        <div class="depth-legend" id="depthLegend" hidden></div>
+        <p class="map-note">เส้นประ = ความลึกโดยประมาณ <b>ไม่ใช่แผนที่เดินเรือ</b></p>
+      </div>
+
+      <div class="state-slot" id="placeState"></div>
+      <ul class="place-list" id="placeList"></ul>
+      <p class="datum-note" id="placeNotice"></p>
+    </dialog>
+
+    <script src="map.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
