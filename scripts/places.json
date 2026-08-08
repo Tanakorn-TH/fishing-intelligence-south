@@ -1,442 +1,1157 @@
 {
  "places": [
   {
-   "name": "ชุมพร",
-   "province": "จังหวัดชุมพร",
-   "lat": 10.4957,
-   "lon": 99.1797,
-   "kind": "province",
-   "query": "ชุมพร"
-  },
-  {
-   "name": "ระนอง",
-   "province": "จังหวัดระนอง",
-   "lat": 9.9658,
-   "lon": 98.6348,
-   "kind": "province",
-   "query": "ระนอง"
-  },
-  {
-   "name": "สุราษฎร์ธานี",
-   "province": "จังหวัดสุราษฎร์ธานี",
-   "lat": 9.1401,
-   "lon": 99.3331,
-   "kind": "province",
-   "query": "สุราษฎร์ธานี"
-  },
-  {
-   "name": "พังงา",
-   "province": "จังหวัดพังงา",
-   "lat": 8.4509,
-   "lon": 98.5298,
-   "kind": "province",
-   "query": "พังงา"
-  },
-  {
-   "name": "ภูเก็ต",
-   "province": "ภูเก็ต",
-   "lat": 7.8906,
-   "lon": 98.3981,
-   "kind": "province",
-   "query": "ภูเก็ต"
-  },
-  {
-   "name": "กระบี่",
-   "province": "จังหวัดกระบี่",
-   "lat": 8.0726,
-   "lon": 98.9105,
-   "kind": "province",
-   "query": "กระบี่"
-  },
-  {
    "name": "นครศรีธรรมราช",
+   "name_en": "Nakhon Si Thammarat",
    "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
    "lat": 8.4333,
    "lon": 99.9667,
    "kind": "province",
-   "query": "นครศรีธรรมราช"
+   "code": 80
   },
   {
-   "name": "ตรัง",
-   "province": "จังหวัดตรัง",
-   "lat": 7.5563,
-   "lon": 99.6114,
-   "kind": "province",
-   "query": "ตรัง"
-  },
-  {
-   "name": "พัทลุง",
-   "province": "จังหวัดพัทลุง",
-   "lat": 7.6179,
-   "lon": 100.0779,
-   "kind": "province",
-   "query": "พัทลุง"
-  },
-  {
-   "name": "สตูล",
-   "province": "จังหวัดสตูล",
-   "lat": 6.6231,
-   "lon": 100.0668,
-   "kind": "province",
-   "query": "สตูล"
-  },
-  {
-   "name": "สงขลา",
-   "province": "จังหวัดสงขลา",
-   "lat": 7.1988,
-   "lon": 100.5951,
-   "kind": "province",
-   "query": "สงขลา"
-  },
-  {
-   "name": "ปัตตานี",
-   "province": "จังหวัดปัตตานี",
-   "lat": 6.8681,
-   "lon": 101.2501,
-   "kind": "province",
-   "query": "ปัตตานี"
-  },
-  {
-   "name": "ยะลา",
-   "province": "จังหวัดยะลา",
-   "lat": 6.54,
-   "lon": 101.2813,
-   "kind": "province",
-   "query": "ยะลา"
-  },
-  {
-   "name": "นราธิวาส",
-   "province": "จังหวัดนราธิวาส",
-   "lat": 6.4264,
-   "lon": 101.8231,
-   "kind": "province",
-   "query": "นราธิวาส"
-  },
-  {
-   "name": "ปะทิว",
-   "province": "จังหวัดชุมพร",
-   "lat": 10.7091,
-   "lon": 99.3182,
-   "kind": "town",
-   "query": "ปะทิว"
-  },
-  {
-   "name": "ท่าชนะ",
-   "province": "จังหวัดสุราษฎร์ธานี",
-   "lat": 9.572,
-   "lon": 99.1659,
-   "kind": "town",
-   "query": "ท่าชนะ"
-  },
-  {
-   "name": "ไชยา",
-   "province": "จังหวัดสุราษฎร์ธานี",
-   "lat": 9.3863,
-   "lon": 99.1986,
-   "kind": "town",
-   "query": "ไชยา"
-  },
-  {
-   "name": "ดอนสัก",
-   "province": "จังหวัดสุราษฎร์ธานี",
-   "lat": 9.3168,
-   "lon": 99.6918,
-   "kind": "town",
-   "query": "ดอนสัก"
-  },
-  {
-   "name": "เกาะสมุย",
-   "province": "จังหวัดสุราษฎร์ธานี",
-   "lat": 9.5357,
-   "lon": 99.9357,
-   "kind": "town",
-   "query": "เกาะสมุย"
-  },
-  {
-   "name": "เกาะพะงัน",
-   "province": "จังหวัดสุราษฎร์ธานี",
-   "lat": 9.7195,
-   "lon": 99.9951,
-   "kind": "town",
-   "query": "เกาะพะงัน"
-  },
-  {
-   "name": "เกาะเต่า",
-   "province": "จังหวัดสุราษฎร์ธานี",
-   "lat": 10.0981,
-   "lon": 99.8381,
-   "kind": "town",
-   "query": "เกาะเต่า"
-  },
-  {
-   "name": "ขนอม",
+   "name": "พรหมคีรี",
+   "name_en": "Phrom Khiri",
    "province": "จังหวัดนครศรีธรรมราช",
-   "lat": 9.2081,
-   "lon": 99.8614,
-   "kind": "town",
-   "query": "ขนอม"
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.5233,
+   "lon": 99.8227,
+   "kind": "district",
+   "code": 8002
+  },
+  {
+   "name": "ลานสกา",
+   "name_en": "Lan Saka",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.371,
+   "lon": 99.8056,
+   "kind": "district",
+   "code": 8003
+  },
+  {
+   "name": "ฉวาง",
+   "name_en": "Chawang",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.4261,
+   "lon": 99.5047,
+   "kind": "district",
+   "code": 8004
+  },
+  {
+   "name": "พิปูน",
+   "name_en": "Phipun",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.5604,
+   "lon": 99.607,
+   "kind": "district",
+   "code": 8005
+  },
+  {
+   "name": "เชียรใหญ่",
+   "name_en": "Chian Yai",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.1694,
+   "lon": 100.1447,
+   "kind": "district",
+   "code": 8006
+  },
+  {
+   "name": "ชะอวด",
+   "name_en": "Cha-Uat",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 7.9677,
+   "lon": 99.9998,
+   "kind": "district",
+   "code": 8007
   },
   {
    "name": "ท่าศาลา",
+   "name_en": "Tha Sala",
    "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
    "lat": 8.6673,
    "lon": 99.9308,
-   "kind": "town",
-   "query": "ท่าศาลา"
+   "kind": "district",
+   "code": 8008
+  },
+  {
+   "name": "ทุ่งสง",
+   "name_en": "Thung Song",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.1645,
+   "lon": 99.6804,
+   "kind": "district",
+   "code": 8009
+  },
+  {
+   "name": "นาบอน",
+   "name_en": "Na Bon",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.2617,
+   "lon": 99.5947,
+   "kind": "district",
+   "code": 8010
+  },
+  {
+   "name": "ทุ่งใหญ่",
+   "name_en": "Thung Yai",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.3012,
+   "lon": 99.3661,
+   "kind": "district",
+   "code": 8011
   },
   {
    "name": "ปากพนัง",
+   "name_en": "Pak Phanang",
    "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
    "lat": 8.3511,
    "lon": 100.2019,
-   "kind": "town",
-   "query": "ปากพนัง"
+   "kind": "district",
+   "code": 8012
+  },
+  {
+   "name": "ร่อนพิบูลย์",
+   "name_en": "Ron Phibun",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.1791,
+   "lon": 99.8542,
+   "kind": "district",
+   "code": 8013
+  },
+  {
+   "name": "ขนอม",
+   "name_en": "Khanom",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 9.2081,
+   "lon": 99.8614,
+   "kind": "district",
+   "code": 8015
   },
   {
    "name": "หัวไทร",
+   "name_en": "Hua Sai",
    "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
    "lat": 8.0441,
    "lon": 100.3059,
-   "kind": "town",
-   "query": "หัวไทร"
+   "kind": "district",
+   "code": 8016
   },
   {
-   "name": "ระโนด",
-   "province": "จังหวัดสงขลา",
-   "lat": 7.7777,
-   "lon": 100.3213,
-   "kind": "town",
-   "query": "ระโนด"
+   "name": "บางขัน",
+   "name_en": "Bang Khan",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.0269,
+   "lon": 99.4737,
+   "kind": "district",
+   "code": 8017
   },
   {
-   "name": "สทิงพระ",
-   "province": "จังหวัดสงขลา",
-   "lat": 7.473,
-   "lon": 100.4391,
-   "kind": "town",
-   "query": "สทิงพระ"
+   "name": "ถ้ำพรรณรา",
+   "name_en": "Tham Phannara",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.4205,
+   "lon": 99.3952,
+   "kind": "district",
+   "code": 8018
   },
   {
-   "name": "สิงหนคร",
-   "province": "จังหวัดสงขลา",
-   "lat": 7.239,
-   "lon": 100.5527,
-   "kind": "town",
-   "query": "สิงหนคร"
+   "name": "จุฬาภรณ์",
+   "name_en": "Chulabhorn",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.076,
+   "lon": 99.8695,
+   "kind": "district",
+   "code": 8019
   },
   {
-   "name": "หาดใหญ่",
-   "province": "จังหวัดสงขลา",
-   "lat": 7.0084,
-   "lon": 100.4767,
-   "kind": "town",
-   "query": "หาดใหญ่"
+   "name": "พระพรหม",
+   "name_en": "Phra Phrom",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.3391,
+   "lon": 99.9009,
+   "kind": "district",
+   "code": 8020
   },
   {
-   "name": "จะนะ",
-   "province": "จังหวัดสงขลา",
-   "lat": 6.9154,
-   "lon": 100.7404,
-   "kind": "town",
-   "query": "จะนะ"
+   "name": "นบพิตำ",
+   "name_en": "Nopphitam",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.7221,
+   "lon": 99.7488,
+   "kind": "district",
+   "code": 8021
   },
   {
-   "name": "เทพา",
-   "province": "จังหวัดสงขลา",
-   "lat": 6.8294,
-   "lon": 100.9643,
-   "kind": "town",
-   "query": "เทพา"
+   "name": "ช้างกลาง",
+   "name_en": "Chang Klang",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.3709,
+   "lon": 99.5625,
+   "kind": "district",
+   "code": 8022
   },
   {
-   "name": "หนองจิก",
-   "province": "จังหวัดปัตตานี",
-   "lat": 6.8436,
-   "lon": 101.178,
-   "kind": "town",
-   "query": "หนองจิก"
+   "name": "เฉลิมพระเกียรติ",
+   "name_en": "Chaloem Phra Kiet",
+   "province": "จังหวัดนครศรีธรรมราช",
+   "province_plain": "นครศรีธรรมราช",
+   "lat": 8.1769,
+   "lon": 100.0358,
+   "kind": "district",
+   "code": 8023
   },
   {
-   "name": "ยะหริ่ง",
-   "province": "จังหวัดปัตตานี",
-   "lat": 6.8662,
-   "lon": 101.3689,
-   "kind": "town",
-   "query": "ยะหริ่ง"
-  },
-  {
-   "name": "ปะนาเระ",
-   "province": "จังหวัดปัตตานี",
-   "lat": 6.8619,
-   "lon": 101.491,
-   "kind": "town",
-   "query": "ปะนาเระ"
-  },
-  {
-   "name": "สายบุรี",
-   "province": "จังหวัดปัตตานี",
-   "lat": 6.7013,
-   "lon": 101.6167,
-   "kind": "town",
-   "query": "สายบุรี"
-  },
-  {
-   "name": "ไม้แก่น",
-   "province": "จังหวัดปัตตานี",
-   "lat": 6.6098,
-   "lon": 101.6669,
-   "kind": "town",
-   "query": "ไม้แก่น"
-  },
-  {
-   "name": "ตากใบ",
-   "province": "จังหวัดนราธิวาส",
-   "lat": 6.2595,
-   "lon": 102.0546,
-   "kind": "town",
-   "query": "ตากใบ"
-  },
-  {
-   "name": "กะเปอร์",
-   "province": "จังหวัดระนอง",
-   "lat": 9.5852,
-   "lon": 98.5961,
-   "kind": "town",
-   "query": "กะเปอร์"
-  },
-  {
-   "name": "สุขสำราญ",
-   "province": "จังหวัดระนอง",
-   "lat": 9.3446,
-   "lon": 98.429,
-   "kind": "town",
-   "query": "สุขสำราญ"
-  },
-  {
-   "name": "คุระบุรี",
-   "province": "จังหวัดพังงา",
-   "lat": 9.194,
-   "lon": 98.4151,
-   "kind": "town",
-   "query": "คุระบุรี"
-  },
-  {
-   "name": "ตะกั่วป่า",
-   "province": "จังหวัดพังงา",
-   "lat": 8.8705,
-   "lon": 98.3438,
-   "kind": "town",
-   "query": "ตะกั่วป่า"
-  },
-  {
-   "name": "ท้ายเหมือง",
-   "province": "จังหวัดพังงา",
-   "lat": 8.3991,
-   "lon": 98.2606,
-   "kind": "town",
-   "query": "ท้ายเหมือง"
-  },
-  {
-   "name": "เกาะยาว",
-   "province": "จังหวัดพังงา",
-   "lat": 8.1101,
-   "lon": 98.5923,
-   "kind": "town",
-   "query": "เกาะยาว"
-  },
-  {
-   "name": "ถลาง",
-   "province": "ภูเก็ต",
-   "lat": 8.0317,
-   "lon": 98.3341,
-   "kind": "town",
-   "query": "ถลาง"
-  },
-  {
-   "name": "อ่าวนาง",
+   "name": "กระบี่",
+   "name_en": "Krabi",
    "province": "จังหวัดกระบี่",
-   "lat": 8.0458,
-   "lon": 98.8103,
-   "kind": "town",
-   "query": "อ่าวนาง"
+   "province_plain": "กระบี่",
+   "lat": 8.0726,
+   "lon": 98.9105,
+   "kind": "province",
+   "code": 81
+  },
+  {
+   "name": "เขาพนม",
+   "name_en": "Khao Phanom",
+   "province": "จังหวัดกระบี่",
+   "province_plain": "กระบี่",
+   "lat": 8.2655,
+   "lon": 99.0512,
+   "kind": "district",
+   "code": 8102
   },
   {
    "name": "เกาะลันตา",
+   "name_en": "Ko Lanta",
    "province": "จังหวัดกระบี่",
+   "province_plain": "กระบี่",
    "lat": 7.5336,
    "lon": 99.0865,
-   "kind": "town",
-   "query": "เกาะลันตา"
+   "kind": "district",
+   "code": 8103
   },
   {
    "name": "คลองท่อม",
+   "name_en": "Khlong Thom",
    "province": "จังหวัดกระบี่",
+   "province_plain": "กระบี่",
    "lat": 7.9375,
    "lon": 99.1446,
-   "kind": "town",
-   "query": "คลองท่อม"
+   "kind": "district",
+   "code": 8104
   },
   {
-   "name": "สิเกา",
+   "name": "อ่าวลึก",
+   "name_en": "Ao Luek",
+   "province": "จังหวัดกระบี่",
+   "province_plain": "กระบี่",
+   "lat": 8.378,
+   "lon": 98.7212,
+   "kind": "district",
+   "code": 8105
+  },
+  {
+   "name": "ปลายพระยา",
+   "name_en": "Plai Phraya",
+   "province": "จังหวัดกระบี่",
+   "province_plain": "กระบี่",
+   "lat": 8.5328,
+   "lon": 98.8637,
+   "kind": "district",
+   "code": 8106
+  },
+  {
+   "name": "ลำทับ",
+   "name_en": "Lam Thap",
+   "province": "จังหวัดกระบี่",
+   "province_plain": "กระบี่",
+   "lat": 8.0723,
+   "lon": 99.2922,
+   "kind": "district",
+   "code": 8107
+  },
+  {
+   "name": "เหนือคลอง",
+   "name_en": "Nuea Khlong",
+   "province": "จังหวัดกระบี่",
+   "province_plain": "กระบี่",
+   "lat": 8.0714,
+   "lon": 98.9993,
+   "kind": "district",
+   "code": 8108
+  },
+  {
+   "name": "พังงา",
+   "name_en": "Phangnga",
+   "province": "จังหวัดพังงา",
+   "province_plain": "พังงา",
+   "lat": 8.4509,
+   "lon": 98.5298,
+   "kind": "province",
+   "code": 82
+  },
+  {
+   "name": "เกาะยาว",
+   "name_en": "Ko Yao",
+   "province": "จังหวัดพังงา",
+   "province_plain": "พังงา",
+   "lat": 8.1101,
+   "lon": 98.5923,
+   "kind": "district",
+   "code": 8202
+  },
+  {
+   "name": "กะปง",
+   "name_en": "Kapong",
+   "province": "จังหวัดพังงา",
+   "province_plain": "พังงา",
+   "lat": 8.697,
+   "lon": 98.4091,
+   "kind": "district",
+   "code": 8203
+  },
+  {
+   "name": "ตะกั่วป่า",
+   "name_en": "Takua Pa",
+   "province": "จังหวัดพังงา",
+   "province_plain": "พังงา",
+   "lat": 8.8705,
+   "lon": 98.3438,
+   "kind": "district",
+   "code": 8205
+  },
+  {
+   "name": "คุระบุรี",
+   "name_en": "Khura Buri",
+   "province": "จังหวัดพังงา",
+   "province_plain": "พังงา",
+   "lat": 9.194,
+   "lon": 98.4151,
+   "kind": "district",
+   "code": 8206
+  },
+  {
+   "name": "ทับปุด",
+   "name_en": "Thap Put",
+   "province": "จังหวัดพังงา",
+   "province_plain": "พังงา",
+   "lat": 8.5162,
+   "lon": 98.6397,
+   "kind": "district",
+   "code": 8207
+  },
+  {
+   "name": "ท้ายเหมือง",
+   "name_en": "Thai Mueang",
+   "province": "จังหวัดพังงา",
+   "province_plain": "พังงา",
+   "lat": 8.3991,
+   "lon": 98.2606,
+   "kind": "district",
+   "code": 8208
+  },
+  {
+   "name": "ภูเก็ต",
+   "name_en": "Phuket",
+   "province": "จังหวัดภูเก็ต",
+   "province_plain": "ภูเก็ต",
+   "lat": 7.8906,
+   "lon": 98.3981,
+   "kind": "province",
+   "code": 83
+  },
+  {
+   "name": "เมืองภูเก็ต",
+   "name_en": "Mueang Phuket",
+   "province": "จังหวัดภูเก็ต",
+   "province_plain": "ภูเก็ต",
+   "lat": 7.8634,
+   "lon": 98.3644,
+   "kind": "district",
+   "code": 8301
+  },
+  {
+   "name": "ถลาง",
+   "name_en": "Thalang",
+   "province": "จังหวัดภูเก็ต",
+   "province_plain": "ภูเก็ต",
+   "lat": 8.0317,
+   "lon": 98.3341,
+   "kind": "district",
+   "code": 8303
+  },
+  {
+   "name": "ตรัง",
+   "name_en": "Trang",
    "province": "จังหวัดตรัง",
-   "lat": 7.5716,
-   "lon": 99.3449,
-   "kind": "town",
-   "query": "สิเกา"
+   "province_plain": "ตรัง",
+   "lat": 7.5563,
+   "lon": 99.6114,
+   "kind": "province",
+   "code": 92
   },
   {
    "name": "กันตัง",
+   "name_en": "Kantang",
    "province": "จังหวัดตรัง",
+   "province_plain": "ตรัง",
    "lat": 7.4054,
    "lon": 99.5156,
-   "kind": "town",
-   "query": "กันตัง"
+   "kind": "district",
+   "code": 9202
+  },
+  {
+   "name": "ย่านตาขาว",
+   "name_en": "Yan Ta Khao",
+   "province": "จังหวัดตรัง",
+   "province_plain": "ตรัง",
+   "lat": 7.3862,
+   "lon": 99.6669,
+   "kind": "district",
+   "code": 9203
   },
   {
    "name": "ปะเหลียน",
+   "name_en": "Palian",
    "province": "จังหวัดตรัง",
+   "province_plain": "ตรัง",
    "lat": 7.1724,
    "lon": 99.6862,
-   "kind": "town",
-   "query": "ปะเหลียน"
+   "kind": "district",
+   "code": 9204
+  },
+  {
+   "name": "สิเกา",
+   "name_en": "Sikao",
+   "province": "จังหวัดตรัง",
+   "province_plain": "ตรัง",
+   "lat": 7.5716,
+   "lon": 99.3449,
+   "kind": "district",
+   "code": 9205
+  },
+  {
+   "name": "ห้วยยอด",
+   "name_en": "Huai Yot",
+   "province": "จังหวัดตรัง",
+   "province_plain": "ตรัง",
+   "lat": 7.7894,
+   "lon": 99.6347,
+   "kind": "district",
+   "code": 9206
+  },
+  {
+   "name": "วังวิเศษ",
+   "name_en": "Wang Wiset",
+   "province": "จังหวัดตรัง",
+   "province_plain": "ตรัง",
+   "lat": 7.7363,
+   "lon": 99.3987,
+   "kind": "district",
+   "code": 9207
+  },
+  {
+   "name": "นาโยง",
+   "name_en": "Na Yong",
+   "province": "จังหวัดตรัง",
+   "province_plain": "ตรัง",
+   "lat": 7.5617,
+   "lon": 99.6948,
+   "kind": "district",
+   "code": 9208
+  },
+  {
+   "name": "รัษฎา",
+   "name_en": "Ratsada",
+   "province": "จังหวัดตรัง",
+   "province_plain": "ตรัง",
+   "lat": 7.9747,
+   "lon": 99.6335,
+   "kind": "district",
+   "code": 9209
+  },
+  {
+   "name": "หาดสำราญ",
+   "name_en": "Hat Samran",
+   "province": "จังหวัดตรัง",
+   "province_plain": "ตรัง",
+   "lat": 7.2403,
+   "lon": 99.5762,
+   "kind": "district",
+   "code": 9210
+  },
+  {
+   "name": "พัทลุง",
+   "name_en": "Phatthalung",
+   "province": "จังหวัดพัทลุง",
+   "province_plain": "พัทลุง",
+   "lat": 7.6179,
+   "lon": 100.0779,
+   "kind": "province",
+   "code": 93
+  },
+  {
+   "name": "กงหรา",
+   "name_en": "Kong Ra",
+   "province": "จังหวัดพัทลุง",
+   "province_plain": "พัทลุง",
+   "lat": 7.4027,
+   "lon": 99.9497,
+   "kind": "district",
+   "code": 9302
+  },
+  {
+   "name": "เขาชัยสน",
+   "name_en": "Khao Chaison",
+   "province": "จังหวัดพัทลุง",
+   "province_plain": "พัทลุง",
+   "lat": 7.4612,
+   "lon": 100.1337,
+   "kind": "district",
+   "code": 9303
+  },
+  {
+   "name": "ตะโหมด",
+   "name_en": "Tamot",
+   "province": "จังหวัดพัทลุง",
+   "province_plain": "พัทลุง",
+   "lat": 7.3392,
+   "lon": 100.1117,
+   "kind": "district",
+   "code": 9304
+  },
+  {
+   "name": "ควนขนุน",
+   "name_en": "Khuan Khanun",
+   "province": "จังหวัดพัทลุง",
+   "province_plain": "พัทลุง",
+   "lat": 7.7347,
+   "lon": 100.0093,
+   "kind": "district",
+   "code": 9305
+  },
+  {
+   "name": "ปากพะยูน",
+   "name_en": "Pak Phayun",
+   "province": "จังหวัดพัทลุง",
+   "province_plain": "พัทลุง",
+   "lat": 7.3422,
+   "lon": 100.3175,
+   "kind": "district",
+   "code": 9306
+  },
+  {
+   "name": "ศรีบรรพต",
+   "name_en": "Si Banphot",
+   "province": "จังหวัดพัทลุง",
+   "province_plain": "พัทลุง",
+   "lat": 7.7214,
+   "lon": 99.8843,
+   "kind": "district",
+   "code": 9307
+  },
+  {
+   "name": "ป่าบอน",
+   "name_en": "Pa Bon",
+   "province": "จังหวัดพัทลุง",
+   "province_plain": "พัทลุง",
+   "lat": 7.2694,
+   "lon": 100.1704,
+   "kind": "district",
+   "code": 9308
+  },
+  {
+   "name": "บางแก้ว",
+   "name_en": "Bang Kaeo",
+   "province": "จังหวัดพัทลุง",
+   "province_plain": "พัทลุง",
+   "lat": 7.4295,
+   "lon": 100.178,
+   "kind": "district",
+   "code": 9309
+  },
+  {
+   "name": "ศรีนครินทร์",
+   "name_en": "Srinagarindra",
+   "province": "จังหวัดพัทลุง",
+   "province_plain": "พัทลุง",
+   "lat": 7.5699,
+   "lon": 99.9435,
+   "kind": "district",
+   "code": 9311
+  },
+  {
+   "name": "สงขลา",
+   "name_en": "Songkhla",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 7.1988,
+   "lon": 100.5951,
+   "kind": "province",
+   "code": 90
+  },
+  {
+   "name": "สทิงพระ",
+   "name_en": "Sathing Phra",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 7.473,
+   "lon": 100.4391,
+   "kind": "district",
+   "code": 9002
+  },
+  {
+   "name": "จะนะ",
+   "name_en": "Chana",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 6.9154,
+   "lon": 100.7404,
+   "kind": "district",
+   "code": 9003
+  },
+  {
+   "name": "นาทวี",
+   "name_en": "Na Thawi",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 6.7419,
+   "lon": 100.6914,
+   "kind": "district",
+   "code": 9004
+  },
+  {
+   "name": "เทพา",
+   "name_en": "Thepha",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 6.8294,
+   "lon": 100.9643,
+   "kind": "district",
+   "code": 9005
+  },
+  {
+   "name": "สะบ้าย้อย",
+   "name_en": "Saba Yoi",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 6.6175,
+   "lon": 100.9519,
+   "kind": "district",
+   "code": 9006
+  },
+  {
+   "name": "ระโนด",
+   "name_en": "Ranot",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 7.7777,
+   "lon": 100.3213,
+   "kind": "district",
+   "code": 9007
+  },
+  {
+   "name": "กระแสสินธุ์",
+   "name_en": "Krasae Sin",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 7.6155,
+   "lon": 100.3284,
+   "kind": "district",
+   "code": 9008
+  },
+  {
+   "name": "รัตภูมิ",
+   "name_en": "Rattaphum",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 7.1348,
+   "lon": 100.2565,
+   "kind": "district",
+   "code": 9009
+  },
+  {
+   "name": "สะเดา",
+   "name_en": "Sadao",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 6.6388,
+   "lon": 100.4234,
+   "kind": "district",
+   "code": 9010
+  },
+  {
+   "name": "หาดใหญ่",
+   "name_en": "Hat Yai",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 7.0084,
+   "lon": 100.4767,
+   "kind": "district",
+   "code": 9011
+  },
+  {
+   "name": "ควนเนียง",
+   "name_en": "Khuan Niang",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 7.1914,
+   "lon": 100.3535,
+   "kind": "district",
+   "code": 9013
+  },
+  {
+   "name": "บางกล่ำ",
+   "name_en": "Bang Klam",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 7.0895,
+   "lon": 100.4107,
+   "kind": "district",
+   "code": 9014
+  },
+  {
+   "name": "สิงหนคร",
+   "name_en": "Singhanakhon",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 7.239,
+   "lon": 100.5527,
+   "kind": "district",
+   "code": 9015
+  },
+  {
+   "name": "คลองหอยโข่ง",
+   "name_en": "Khlong Hoi Khong",
+   "province": "จังหวัดสงขลา",
+   "province_plain": "สงขลา",
+   "lat": 6.8986,
+   "lon": 100.3889,
+   "kind": "district",
+   "code": 9016
+  },
+  {
+   "name": "สตูล",
+   "name_en": "Satun",
+   "province": "จังหวัดสตูล",
+   "province_plain": "สตูล",
+   "lat": 6.6231,
+   "lon": 100.0668,
+   "kind": "province",
+   "code": 91
+  },
+  {
+   "name": "ควนโดน",
+   "name_en": "Khuan Don",
+   "province": "จังหวัดสตูล",
+   "province_plain": "สตูล",
+   "lat": 6.7876,
+   "lon": 100.0778,
+   "kind": "district",
+   "code": 9102
+  },
+  {
+   "name": "ควนกาหลง",
+   "name_en": "Khuan Kalong",
+   "province": "จังหวัดสตูล",
+   "province_plain": "สตูล",
+   "lat": 6.8454,
+   "lon": 100.0715,
+   "kind": "district",
+   "code": 9103
+  },
+  {
+   "name": "ท่าแพ",
+   "name_en": "Tha Phae",
+   "province": "จังหวัดสตูล",
+   "province_plain": "สตูล",
+   "lat": 6.7901,
+   "lon": 99.9701,
+   "kind": "district",
+   "code": 9104
   },
   {
    "name": "ละงู",
+   "name_en": "La-Ngu",
    "province": "จังหวัดสตูล",
+   "province_plain": "สตูล",
    "lat": 6.8849,
    "lon": 99.7884,
-   "kind": "town",
-   "query": "ละงู"
+   "kind": "district",
+   "code": 9105
   },
   {
    "name": "ทุ่งหว้า",
+   "name_en": "Thung Wa",
    "province": "จังหวัดสตูล",
+   "province_plain": "สตูล",
    "lat": 7.1096,
    "lon": 99.7559,
-   "kind": "town",
-   "query": "ทุ่งหว้า"
+   "kind": "district",
+   "code": 9106
   },
   {
-   "name": "เกาะพีพีดอน",
+   "name": "มะนัง",
+   "name_en": "Manang",
+   "province": "จังหวัดสตูล",
+   "province_plain": "สตูล",
+   "lat": 6.9993,
+   "lon": 99.9216,
+   "kind": "district",
+   "code": 9107
+  },
+  {
+   "name": "ปัตตานี",
+   "name_en": "Pattani",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.8681,
+   "lon": 101.2501,
+   "kind": "province",
+   "code": 94
+  },
+  {
+   "name": "โคกโพธิ์",
+   "name_en": "Khok Pho",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.7306,
+   "lon": 101.0962,
+   "kind": "district",
+   "code": 9402
+  },
+  {
+   "name": "หนองจิก",
+   "name_en": "Nong Chik",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.8436,
+   "lon": 101.178,
+   "kind": "district",
+   "code": 9403
+  },
+  {
+   "name": "ปะนาเระ",
+   "name_en": "Panare",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.8619,
+   "lon": 101.491,
+   "kind": "district",
+   "code": 9404
+  },
+  {
+   "name": "มายอ",
+   "name_en": "Mayo",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.7186,
+   "lon": 101.4098,
+   "kind": "district",
+   "code": 9405
+  },
+  {
+   "name": "ทุ่งยางแดง",
+   "name_en": "Thung Yang Daeng",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.6182,
+   "lon": 101.4265,
+   "kind": "district",
+   "code": 9406
+  },
+  {
+   "name": "สายบุรี",
+   "name_en": "Sai Buri",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.7013,
+   "lon": 101.6167,
+   "kind": "district",
+   "code": 9407
+  },
+  {
+   "name": "ไม้แก่น",
+   "name_en": "Mai Kaen",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.6098,
+   "lon": 101.6669,
+   "kind": "district",
+   "code": 9408
+  },
+  {
+   "name": "ยะหริ่ง",
+   "name_en": "Yaring",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.8662,
+   "lon": 101.3689,
+   "kind": "district",
+   "code": 9409
+  },
+  {
+   "name": "ยะรัง",
+   "name_en": "Yarang",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.7599,
+   "lon": 101.2934,
+   "kind": "district",
+   "code": 9410
+  },
+  {
+   "name": "กะพ้อ",
+   "name_en": "Kapho",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.5597,
+   "lon": 101.5343,
+   "kind": "district",
+   "code": 9411
+  },
+  {
+   "name": "แม่ลาน",
+   "name_en": "Mae Lan",
+   "province": "จังหวัดปัตตานี",
+   "province_plain": "ปัตตานี",
+   "lat": 6.6611,
+   "lon": 101.2396,
+   "kind": "district",
+   "code": 9412
+  },
+  {
+   "name": "ยะลา",
+   "name_en": "Yala",
+   "province": "จังหวัดยะลา",
+   "province_plain": "ยะลา",
+   "lat": 6.54,
+   "lon": 101.2813,
+   "kind": "province",
+   "code": 95
+  },
+  {
+   "name": "บันนังสตา",
+   "name_en": "Bannang Sata",
+   "province": "จังหวัดยะลา",
+   "province_plain": "ยะลา",
+   "lat": 6.2664,
+   "lon": 101.2646,
+   "kind": "district",
+   "code": 9503
+  },
+  {
+   "name": "ธารโต",
+   "name_en": "Than To",
+   "province": "จังหวัดยะลา",
+   "province_plain": "ยะลา",
+   "lat": 6.1674,
+   "lon": 101.1801,
+   "kind": "district",
+   "code": 9504
+  },
+  {
+   "name": "ยะหา",
+   "name_en": "Yaha",
+   "province": "จังหวัดยะลา",
+   "province_plain": "ยะลา",
+   "lat": 6.4797,
+   "lon": 101.132,
+   "kind": "district",
+   "code": 9505
+  },
+  {
+   "name": "รามัน",
+   "name_en": "Raman",
+   "province": "จังหวัดยะลา",
+   "province_plain": "ยะลา",
+   "lat": 6.4786,
+   "lon": 101.4241,
+   "kind": "district",
+   "code": 9506
+  },
+  {
+   "name": "นราธิวาส",
+   "name_en": "Narathiwat",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 6.4264,
+   "lon": 101.8231,
+   "kind": "province",
+   "code": 96
+  },
+  {
+   "name": "ตากใบ",
+   "name_en": "Tak Bai",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 6.2595,
+   "lon": 102.0546,
+   "kind": "district",
+   "code": 9602
+  },
+  {
+   "name": "บาเจาะ",
+   "name_en": "Tak Bai",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 6.5168,
+   "lon": 101.651,
+   "kind": "district",
+   "code": 9603
+  },
+  {
+   "name": "ยี่งอ",
+   "name_en": "Yi-Ngo",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 6.403,
+   "lon": 101.7062,
+   "kind": "district",
+   "code": 9604
+  },
+  {
+   "name": "ระแงะ",
+   "name_en": "Ra-Ngae",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 6.2968,
+   "lon": 101.7284,
+   "kind": "district",
+   "code": 9605
+  },
+  {
+   "name": "รือเสาะ",
+   "name_en": "Rueso",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 6.3936,
+   "lon": 101.5185,
+   "kind": "district",
+   "code": 9606
+  },
+  {
+   "name": "ศรีสาคร",
+   "name_en": "Si Sakhon",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 6.2314,
+   "lon": 101.5005,
+   "kind": "district",
+   "code": 9607
+  },
+  {
+   "name": "แว้ง",
+   "name_en": "Waeng",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 5.928,
+   "lon": 101.8838,
+   "kind": "district",
+   "code": 9608
+  },
+  {
+   "name": "สุคิริน",
+   "name_en": "Sukhirin",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 5.9389,
+   "lon": 101.7708,
+   "kind": "district",
+   "code": 9609
+  },
+  {
+   "name": "สุไหงโก-ลก",
+   "name_en": "Su-Ngai Kolok",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 6.0298,
+   "lon": 101.9659,
+   "kind": "district",
+   "code": 9610
+  },
+  {
+   "name": "จะแนะ",
+   "name_en": "Chanae",
+   "province": "จังหวัดนราธิวาส",
+   "province_plain": "นราธิวาส",
+   "lat": 6.0991,
+   "lon": 101.6935,
+   "kind": "district",
+   "code": 9612
+  },
+  {
+   "name": "เกาะพีพี",
+   "name_en": "",
    "province": "จังหวัดกระบี่",
+   "province_plain": "กระบี่",
    "lat": 7.7443,
    "lon": 98.7811,
-   "kind": "town",
-   "query": "เกาะพีพี"
+   "kind": "landmark",
+   "code": null
+  },
+  {
+   "name": "อ่าวนาง",
+   "name_en": "",
+   "province": "จังหวัดกระบี่",
+   "province_plain": "กระบี่",
+   "lat": 8.0458,
+   "lon": 98.8103,
+   "kind": "landmark",
+   "code": null
   },
   {
    "name": "เกาะหลีเป๊ะ",
+   "name_en": "",
    "province": "จังหวัดสตูล",
+   "province_plain": "สตูล",
    "lat": 6.4908,
    "lon": 99.3032,
-   "kind": "town",
-   "query": "เกาะหลีเป๊ะ"
+   "kind": "landmark",
+   "code": null
   }
  ],
  "missed": [
-  "หลังสวน",
-  "สิชล",
-  "ตะกั่วทุ่ง",
-  "กะทู้"
+  "เมืองนครศรีธรรมราช (นครศรีธรรมราช)",
+  "สิชล (นครศรีธรรมราช)",
+  "เมืองกระบี่ (กระบี่)",
+  "เมืองพังงา (พังงา)",
+  "ตะกั่วทุ่ง (พังงา)",
+  "กะทู้ (ภูเก็ต)",
+  "เมืองตรัง (ตรัง)",
+  "เมืองพัทลุง (พัทลุง)",
+  "ป่าพะยอม (พัทลุง)",
+  "เมืองสงขลา (สงขลา)",
+  "นาหม่อม (สงขลา)",
+  "เมืองสตูล (สตูล)",
+  "เมืองปัตตานี (ปัตตานี)",
+  "เมืองยะลา (ยะลา)",
+  "เบตง (ยะลา)",
+  "กาบัง (ยะลา)",
+  "กรงปินัง (ยะลา)",
+  "เมืองนราธิวาส (นราธิวาส)",
+  "สุไหงปาดี (นราธิวาส)",
+  "เจาะไอร้อง (นราธิวาส)",
+  "หาดใหญ่ (สงขลา) พิกัดซ้ำ"
  ]
 }

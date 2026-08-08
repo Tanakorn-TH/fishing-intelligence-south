@@ -642,8 +642,13 @@ async function loadPlaces(query = '') {
   renderState(slot, { kind: 'loading', title: 'กำลังค้นหา…' });
 
   try {
-    const params = { lat: activeLocation.lat, lon: activeLocation.lon, limit: 100 };
-    if (query) params.q = query;
+    // ไม่ส่ง limit ตอนเปิดดูรายการ เพื่อให้ได้ครบทุกจุดตามที่ backend ตั้งใจไว้
+    // เคยส่ง 100 ไว้ตายตัว พอชุดข้อมูลโตเกินนั้น จังหวัดท้าย ๆ หายไปจากทั้งรายการและแผนที่
+    const params = { lat: activeLocation.lat, lon: activeLocation.lon };
+    if (query) {
+      params.q = query;
+      params.limit = 20;
+    }
     const payload = await fetchJson('api/places.php', params);
 
     // คำตอบของคำค้นเก่ามาช้ากว่าคำใหม่ได้ ทิ้งไปเลยไม่ต้องวาด

@@ -78,10 +78,15 @@ const LAT_MAX = 11.5;
 const LON_MIN = 97.0;
 const LON_MAX = 102.5;
 
-/** 14 จังหวัดภาคใต้ — ชุดข้อมูลต้องครอบคลุมครบ ไม่งั้นผู้ใช้บางจังหวัดจะเลือกที่ของตัวเองไม่ได้ */
+/**
+ * จังหวัดที่ชุดข้อมูลต้องครอบคลุม — ขอบเขตรอบแรกตามที่ตกลงกันไว้
+ * ยังไม่รวม ชุมพร ระนอง สุราษฎร์ธานี ซึ่งจะเพิ่มทีหลัง
+ * ถ้าเพิ่มจังหวัดใน scripts/build-places.py แล้วลืมมาแก้ที่นี่ ข้อทดสอบจะยังผ่าน
+ * แต่ถ้า "ลด" จังหวัดโดยไม่ตั้งใจ ข้อนี้จะจับได้ทันที
+ */
 const SOUTHERN_PROVINCES = [
-    'ชุมพร', 'ระนอง', 'สุราษฎร์ธานี', 'พังงา', 'ภูเก็ต', 'กระบี่', 'นครศรีธรรมราช',
-    'ตรัง', 'พัทลุง', 'สตูล', 'สงขลา', 'ปัตตานี', 'ยะลา', 'นราธิวาส',
+    'นครศรีธรรมราช', 'กระบี่', 'พังงา', 'ภูเก็ต', 'ตรัง', 'พัทลุง',
+    'สงขลา', 'สตูล', 'ปัตตานี', 'ยะลา', 'นราธิวาส',
 ];
 
 echo "ทดสอบกับ {$base}\n\n=== ไม่ส่งคำค้น: ต้องมีอะไรให้เลือกทันที ===\n";
@@ -117,9 +122,9 @@ foreach ($provinceOrder as $i => $province) {
 }
 check('รายการของจังหวัดเดียวกันอยู่ติดกันเป็นกลุ่ม', $contiguous);
 
-echo "\n--- ชุดข้อมูลครอบคลุมครบ 14 จังหวัดภาคใต้ ---\n";
+echo "\n--- ชุดข้อมูลครอบคลุมครบทุกจังหวัดในขอบเขต ---\n";
 
-$all = get($base . '/api/places.php?limit=100');
+$all = get($base . '/api/places.php');
 $names = array_map(static fn($x) => (string) $x['name'], $all['json']['data'] ?? []);
 $missing = [];
 foreach (SOUTHERN_PROVINCES as $province) {
@@ -127,7 +132,14 @@ foreach (SOUTHERN_PROVINCES as $province) {
         $missing[] = $province;
     }
 }
-check('มีครบทั้ง 14 จังหวัด', $missing === [], 'ขาด: ' . implode(', ', $missing));
+check('มีครบทุกจังหวัดในขอบเขต', $missing === [], 'ขาด: ' . implode(', ', $missing));
+
+// บั๊กที่เคยเกิด: เพดาน limit ต่ำกว่าขนาดชุดข้อมูล จังหวัดท้าย ๆ เลยหายไปเงียบ ๆ
+// โหมดเปิดดูรายการต้องคืนครบเสมอ ไม่ว่าชุดข้อมูลจะโตขึ้นแค่ไหน
+check('โหมดเปิดดูรายการคืนครบ ไม่ถูกเพดานตัด',
+      count($all['json']['data'] ?? []) === (int) ($all['json']['meta']['count'] ?? -1)
+          && count($all['json']['data'] ?? []) >= count(SOUTHERN_PROVINCES),
+      'ได้ ' . count($all['json']['data'] ?? []) . ' รายการ');
 
 echo "\n--- ฝั่งทะเล: อันดามัน หรือ อ่าวไทย ---\n";
 
@@ -173,7 +185,7 @@ check('พัทลุงระบุว่าเป็นทะเลสาบ�
 echo "\n--- โครงสร้างของแต่ละรายการ ---\n";
 
 $first = $rows[0] ?? [];
-foreach (['id', 'name', 'province', 'lat', 'lon', 'kind', 'coast', 'coast_label', 'source'] as $field) {
+foreach (['id', 'name', 'name_en', 'province', 'lat', 'lon', 'kind', 'coast', 'coast_label', 'source'] as $field) {
     check("มีคีย์ {$field}", array_key_exists($field, $first), implode(',', array_keys($first)));
 }
 check('name เป็นภาษาไทย',
@@ -221,6 +233,17 @@ check('ค้นชื่อเต็ม "หาดใหญ่" เจอ',
       var_export($full['json']['data'][0]['name'] ?? null, true));
 
 // ค้นด้วยชื่อจังหวัดต้องได้อำเภอในจังหวัดนั้นด้วย
+// ชื่ออังกฤษมาจากรายชื่อทางการ (GeoThai) คนที่พิมพ์บนแป้นอังกฤษต้องค้นเจอด้วย
+$english = get($base . '/api/places.php?q=' . q('phuket') . '&limit=5');
+check('ค้นด้วยชื่ออังกฤษ "phuket" เจอ', count($english['json']['data'] ?? []) >= 1,
+      'ได้ ' . count($english['json']['data'] ?? []));
+check('ผลค้นอังกฤษตัวแรกเป็นภูเก็ต',
+      ($english['json']['data'][0]['name'] ?? '') === 'ภูเก็ต',
+      var_export($english['json']['data'][0]['name'] ?? null, true));
+check('รายการในระบบมีชื่ออังกฤษกำกับ',
+      trim((string) ($english['json']['data'][0]['name_en'] ?? '')) !== '',
+      var_export($english['json']['data'][0]['name_en'] ?? null, true));
+
 $byProvince = get($base . '/api/places.php?q=' . q('สงขลา') . '&limit=20');
 $provinceRows = $byProvince['json']['data'] ?? [];
 $inSongkhla = array_filter($provinceRows,

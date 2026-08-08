@@ -13,11 +13,13 @@ declare(strict_types=1);
  * ห้ามเอาสองอย่างนี้ไปปนกันในหน้าเว็บโดยไม่บอกผู้ใช้ว่าอันไหนเป็นอันไหน
  *
  * แหล่งข้อมูลสองชั้น:
- *   1. ชุดในระบบ (api/lib/places-data.php) — 54 แห่งครอบคลุม 14 จังหวัดภาคใต้
- *      ตอบเร็ว ค้นบางส่วนของคำได้ และคุมความครอบคลุมเองได้
- *   2. Open-Meteo Geocoding — เสริมเมื่อชุดในระบบไม่พอ
- *      จำเป็นเพราะชุดในระบบมีจำกัด แต่ค้นบางส่วนของคำภาษาไทยได้ไม่ดี
- *      จึงใช้เป็นตัวเสริม ไม่ใช่ตัวหลัก
+ *   1. ชุดในระบบ (api/lib/places-data.php) — อำเภอทั้งหมดของจังหวัดที่รองรับ
+ *      รายชื่อมาจาก GeoThai (MIT) พิกัดมาจาก Open-Meteo Geocoding
+ *      ตอบเร็ว ค้นบางส่วนของคำภาษาไทยได้ และค้นด้วยชื่ออังกฤษได้
+ *   2. Open-Meteo Geocoding สด ๆ — เสริมเมื่อชุดในระบบไม่พอ
+ *      จำเป็นเพราะชุดในระบบมีเฉพาะระดับอำเภอ ไม่มีชื่อสถานที่ย่อย
+ *      แต่ค้นบางส่วนของคำภาษาไทยได้ไม่ดี จึงใช้เป็นตัวเสริม ไม่ใช่ตัวหลัก
+ *      ผลจากชั้นนี้ถูกจัดลำดับไว้ท้ายกลุ่มเสมอ
  */
 
 require_once __DIR__ . '/lib/http.php';
@@ -31,13 +33,14 @@ const FIS_PLACES_LAT_MAX = 11.5;
 const FIS_PLACES_LON_MIN = 97.0;
 const FIS_PLACES_LON_MAX = 102.5;
 
-// เพดานสูงพอให้ frontend ขอรายการทั้งหมดมาแสดงเป็นรายการเลือกแบบจัดกลุ่มตามจังหวัดได้ในครั้งเดียว
+// เพดานสูงพอให้ frontend ขอรายการทั้งหมดมาแสดงในครั้งเดียว
 // ชุดข้อมูลอยู่ในไฟล์ ไม่ได้แตะฐานข้อมูลหรือเน็ต การคืนทั้งหมดจึงถูกมาก
-const FIS_PLACES_MAX_LIMIT = 100;
+//
+// ⚠️ เคยตั้งไว้ 100 ตอนที่มีข้อมูล 54 จุด พอชุดข้อมูลโตเป็น 113 จุด
+// จังหวัดท้าย ๆ ถูกตัดหายไปเงียบ ๆ โดยไม่มีอะไรฟ้อง ผู้ใช้จังหวัดนั้นจะเลือกที่ของตัวเองไม่ได้
+// เพดานนี้จึงต้องสูงกว่าขนาดชุดข้อมูลเสมอ และโหมดเปิดดูรายการไม่ตัดเลย (ดู fis_places_respond)
+const FIS_PLACES_MAX_LIMIT = 300;
 const FIS_PLACES_DEFAULT_LIMIT = 8;
-
-/** ไม่ส่งคำค้นมา = เปิดดูรายการทั้งหมด จึงให้เพดานสูงกว่าโหมดค้นหา */
-const FIS_PLACES_BROWSE_LIMIT = 100;
 
 /** ชื่อสถานที่ไม่เปลี่ยนบ่อย แคชได้ยาว ลดภาระปลายทางเวลาผู้ใช้พิมพ์ทีละตัวอักษร */
 const FIS_PLACES_CACHE_TTL = 86400;
@@ -153,9 +156,10 @@ function fis_places_respond(string $query, ?array $origin, int $limit): void
         foreach (fis_places_sorted() as $place) {
             $results[] = fis_places_row($place, 'ในระบบ');
         }
-        // เปิดดูรายการทั้งหมด ไม่ใช่ค้นหา จึงไม่ควรถูกตัดเหลือ 8 รายการโดยไม่ได้ขอ
+        // เปิดดูรายการทั้งหมด ไม่ใช่ค้นหา — คืนครบทุกจุด ไม่ตัด
+        // "ขอดูทั้งหมด" แล้วได้ไม่ครบคือการโกหกผู้ใช้ และเป็นบั๊กที่ไม่มีอะไรฟ้องเลย
         if (!isset($_GET['limit'])) {
-            $limit = FIS_PLACES_BROWSE_LIMIT;
+            $limit = count($results);
         }
     } else {
         $results = fis_places_search_local($query);
@@ -180,7 +184,23 @@ function fis_places_respond(string $query, ?array $origin, int $limit): void
                 1
             );
         }
-        usort($results, static fn(array $a, array $b): int => $a['distance_km'] <=> $b['distance_km']);
+
+        // เรียงตามความตรงของชื่อก่อน แล้วค่อยใช้ระยะทางตัดสินในกลุ่มเดียวกัน
+        //
+        // ถ้าเรียงด้วยระยะทางล้วน ผลที่ตรงเป๊ะจะถูกดันลงไปใต้ผลที่บังเอิญอยู่ใกล้กว่า
+        // เช่นค้น "krabi" แล้วได้ "ท่าอากาศยานนานาชาติกระบี่" ขึ้นก่อน "กระบี่"
+        // คนพิมพ์ชื่อมาเต็ม ๆ ย่อมอยากได้สิ่งที่ชื่อตรงก่อน ไม่ใช่สิ่งที่ใกล้กว่า
+        //
+        // ตอนเปิดดูรายการ (ไม่ได้ค้น) ทุกแถวมี rank เท่ากัน ผลจึงเป็นการเรียงตามระยะทางล้วน
+        usort($results, static function (array $a, array $b): int {
+            $byRank = ($a['_rank'] ?? 9) <=> ($b['_rank'] ?? 9);
+            return $byRank !== 0 ? $byRank : ($a['distance_km'] <=> $b['distance_km']);
+        });
+    }
+
+    // _rank เป็นของใช้ภายใน ไม่ใช่ส่วนหนึ่งของสัญญา จึงไม่ส่งออกไปให้ frontend
+    foreach ($results as $i => $row) {
+        unset($results[$i]['_rank']);
     }
 
     $results = array_slice($results, 0, $limit);
@@ -255,20 +275,28 @@ function fis_places_search_local(string $query): array
         return [];
     }
 
+    // ค้นได้ทั้งไทยและอังกฤษ เพราะคนพิมพ์บนแป้นอังกฤษอยู่แล้วมีเยอะ
+    // และชื่ออังกฤษมาจากรายชื่อทางการ (GeoThai) จึงสะกดตรงกับที่คนเห็นบนป้ายจริง
+    $lowerNeedle = mb_strtolower($needle);
+
     $exact = [];
     $prefix = [];
     $contains = [];
 
     foreach (fis_places_dataset() as $place) {
         $name = $place['name'];
+        $nameEn = mb_strtolower((string) ($place['name_en'] ?? ''));
         $province = fis_places_plain($place['province']);
 
-        if ($name === $needle) {
-            $exact[] = fis_places_row($place, 'ในระบบ');
-        } elseif (mb_strpos($name, $needle) === 0) {
-            $prefix[] = fis_places_row($place, 'ในระบบ');
-        } elseif (mb_strpos($name, $needle) !== false || mb_strpos($province, $needle) !== false) {
-            $contains[] = fis_places_row($place, 'ในระบบ');
+        if ($name === $needle || ($nameEn !== '' && $nameEn === $lowerNeedle)) {
+            $exact[] = fis_places_row($place, 'ในระบบ') + ['_rank' => 0];
+        } elseif (mb_strpos($name, $needle) === 0
+            || ($nameEn !== '' && mb_strpos($nameEn, $lowerNeedle) === 0)) {
+            $prefix[] = fis_places_row($place, 'ในระบบ') + ['_rank' => 1];
+        } elseif (mb_strpos($name, $needle) !== false
+            || mb_strpos($province, $needle) !== false
+            || ($nameEn !== '' && mb_strpos($nameEn, $lowerNeedle) !== false)) {
+            $contains[] = fis_places_row($place, 'ในระบบ') + ['_rank' => 2];
         }
     }
 
@@ -321,7 +349,7 @@ function fis_places_search_remote(string $query): array
             'lat' => (float) $lat,
             'lon' => (float) $lon,
             'kind' => 'geocoded',
-        ], 'Open-Meteo');
+        ], 'Open-Meteo') + ['_rank' => 3];
     }
 
     fis_cache_put($cacheKey, ['rows' => $rows]);
@@ -403,6 +431,8 @@ function fis_places_row(array $place, string $source): array
         // id ประกอบจากพิกัด ใช้เป็นกุญแจฝั่ง frontend ได้โดยไม่ต้องมีตารางในฐานข้อมูล
         'id' => sprintf('%.4f,%.4f', $place['lat'], $place['lon']),
         'name' => $place['name'],
+        // ชื่ออังกฤษมีเฉพาะชุดในระบบ ผลจาก geocoder จะเป็นค่าว่าง
+        'name_en' => (string) ($place['name_en'] ?? ''),
         'province' => $place['province'],
         'lat' => round((float) $place['lat'], 4),
         'lon' => round((float) $place['lon'], 4),
