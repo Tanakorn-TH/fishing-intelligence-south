@@ -7,10 +7,12 @@
     <title>คลื่นดี | Fishing Intelligence South</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Jost:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="design.css" />
   </head>
   <body>
+    <div class="aurora-bg" aria-hidden="true"></div>
     <div class="shell">
       <aside class="sidebar">
         <a class="brand" href="#overview" aria-label="คลื่นดี หน้าหลัก">
@@ -32,25 +34,25 @@
             <span class="sun-icon">☀</span>
             <div><strong>30°</strong><small>ปัตตานี, ประเทศไทย</small></div>
           </div>
-          <button class="profile"><span>น</span><span class="btn-text"><b>นที นักตกปลา</b><small>Free plan</small></span><i>⌄</i></button>
+          <button class="profile press"><span>น</span><span class="btn-text"><b>นที นักตกปลา</b><small>Free plan</small></span><i>⌄</i></button>
         </div>
       </aside>
 
-      <main>
+      <main class="page-in">
         <header class="topbar">
-          <button class="menu-button" aria-label="เปิดเมนู">☰</button>
+          <button class="menu-button press" aria-label="เปิดเมนู">☰</button>
           <div class="location"><span class="pin">⌖</span><div><b>หาดตะโละกาโปร์</b><small>ปัตตานี</small></div><span class="chevron">⌄</span></div>
-          <div class="top-actions"><button class="date-control">▣ <span id="todayLabel">7 ส.ค. 2569</span>⌄</button><button class="notification" aria-label="การแจ้งเตือน">♧<em></em></button></div>
+          <div class="top-actions"><button class="date-control press">▣ <span id="todayLabel">7 ส.ค. 2569</span>⌄</button><button class="notification press" aria-label="การแจ้งเตือน">♧<em></em></button></div>
         </header>
 
         <section id="overview" class="hero-grid">
-          <div class="hero-copy">
+          <div class="hero-copy rise" style="--i:0">
             <p class="eyebrow">สวัสดีตอนเช้า, นที</p>
             <h1>วันนี้คือวันที่<br /><i>ปลาเข้า</i> ได้ดี</h1>
             <p class="hero-sub">น้ำกำลังเดินสวย ลมเบา และมี Major Time ช่วงเช้า</p>
             <div class="major-window"><span class="pulse"></span><div><small>MAJOR TIME กำลังจะมา</small><b>05:30 - 07:00</b></div><span class="window-arrow">↗</span></div>
           </div>
-          <article class="score-card" aria-label="Fishing score 82 จาก 100">
+          <article class="score-card glass glass-raised spot rise" style="--i:1" aria-label="Fishing score 82 จาก 100">
             <div class="score-top"><span>FISHING SCORE</span><button aria-label="ข้อมูลคะแนน">i</button></div>
             <div class="score-orbit"><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="82"/><circle class="progress" cx="100" cy="100" r="82"/></svg><div class="score-number"><b>82</b><span>/100</span><small>ดีมาก</small></div></div>
             <div class="score-foot"><span class="dot"></span>ดีกว่าเมื่อวาน <b>+12%</b></div>
@@ -58,22 +60,22 @@
         </section>
 
         <section class="metric-row" aria-label="สภาพอากาศปัจจุบัน">
-          <div class="metric"><span class="metric-icon wind">⌁</span><div><small>ลม</small><b>8 <em>km/h</em></b><span>ตะวันตกเฉียงใต้</span></div></div>
-          <div class="metric"><span class="metric-icon wave">≈</span><div><small>คลื่น</small><b>0.6 <em>m</em></b><span>คลื่นเล็ก</span></div></div>
-          <div class="metric"><span class="metric-icon rain">◔</span><div><small>ฝน</small><b>10 <em>%</em></b><span>โอกาสน้อย</span></div></div>
-          <div class="metric"><span class="metric-icon pressure">◉</span><div><small>ความกดอากาศ</small><b>1009 <em>hPa</em></b><span class="good">ปกติ</span></div></div>
+          <div class="metric glass rise" style="--i:2"><span class="metric-icon wind">⌁</span><div><small>ลม</small><b>8 <em>km/h</em></b><span>ตะวันตกเฉียงใต้</span></div></div>
+          <div class="metric glass rise" style="--i:3"><span class="metric-icon wave">≈</span><div><small>คลื่น</small><b>0.6 <em>m</em></b><span>คลื่นเล็ก</span></div></div>
+          <div class="metric glass rise" style="--i:4"><span class="metric-icon rain">◔</span><div><small>ฝน</small><b>10 <em>%</em></b><span>โอกาสน้อย</span></div></div>
+          <div class="metric glass rise" style="--i:5"><span class="metric-icon pressure">◉</span><div><small>ความกดอากาศ</small><b>1009 <em>hPa</em></b><span class="good">ปกติ</span></div></div>
         </section>
 
         <section id="tide" class="content-grid">
-          <article class="panel tide-panel">
-            <div class="panel-heading"><div><p class="eyebrow">TIDE</p><h2>น้ำขึ้นน้ำลงวันนี้</h2></div><button class="link-button">ดูรายละเอียด <span>→</span></button></div>
+          <article class="panel tide-panel glass spot rise" style="--i:6">
+            <div class="panel-heading"><div><p class="eyebrow">TIDE</p><h2>น้ำขึ้นน้ำลงวันนี้</h2></div><button class="link-button press">ดูรายละเอียด <span>→</span></button></div>
             <div class="tide-status"><div><span class="status-water">≈</span><b>น้ำกำลังขึ้น</b><small>จนถึง 18:57 น.</small></div><span class="current-height">1.4 <small>m</small></span></div>
             <div class="chart-wrap"><div class="chart-label high">สูงสุด 2.3m</div><svg class="tide-chart" viewBox="0 0 700 165" preserveAspectRatio="none" role="img" aria-label="กราฟระดับน้ำขึ้นน้ำลง"><defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#37d9d1" stop-opacity=".42"/><stop offset="1" stop-color="#37d9d1" stop-opacity="0"/></linearGradient></defs><path class="area" d="M0,105 C35,100 58,40 110,42 C180,44 175,132 253,129 C326,126 310,20 398,25 C475,31 463,117 546,118 C615,119 620,62 700,55 L700,165 L0,165Z"/><path class="line" d="M0,105 C35,100 58,40 110,42 C180,44 175,132 253,129 C326,126 310,20 398,25 C475,31 463,117 546,118 C615,119 620,62 700,55"/><circle class="chart-point" cx="320" cy="78" r="6"/><line class="now-line" x1="320" x2="320" y1="0" y2="165"/></svg><div class="chart-times"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
             <div class="tide-events"><div><span class="event-icon up">↑</span><p><small>น้ำขึ้น</small><b>06:25</b></p><strong>2.1m</strong></div><div><span class="event-icon down">↓</span><p><small>น้ำลง</small><b>12:43</b></p><strong>0.4m</strong></div><div><span class="event-icon up">↑</span><p><small>น้ำขึ้น</small><b>18:57</b></p><strong>2.3m</strong></div></div>
           </article>
 
-          <article id="moon" class="panel solunar-panel">
-            <div class="panel-heading"><div><p class="eyebrow">SOLUNAR</p><h2>จังหวะปลากิน</h2></div><button class="dots" aria-label="เมนูเพิ่มเติม">•••</button></div>
+          <article id="moon" class="panel solunar-panel glass spot rise" style="--i:7">
+            <div class="panel-heading"><div><p class="eyebrow">SOLUNAR</p><h2>จังหวะปลากิน</h2></div><button class="dots press" aria-label="เมนูเพิ่มเติม">•••</button></div>
             <div class="moon-summary"><div class="moon"><div class="moon-shade"></div></div><div><b>แรม 8 ค่ำ</b><small>แสงจันทร์ 42%</small></div><span>☾</span></div>
             <div class="time-block major"><div><span>●</span><b>Major Time</b></div><strong>05:30 - 07:00</strong><small>กำลังจะเริ่มใน 42 นาที</small></div>
             <div class="time-block minor"><div><span>○</span><b>Minor Time</b></div><strong>12:10 - 13:00</strong><small>ช่วงกลางวัน</small></div>
@@ -81,36 +83,36 @@
           </article>
         </section>
 
-        <section id="forecast" class="panel forecast-panel">
+        <section id="forecast" class="panel forecast-panel glass rise" style="--i:8">
           <div class="panel-heading"><div><p class="eyebrow">HOURLY CONDITIONS</p><h2>สภาพอากาศรายชั่วโมง</h2></div><div class="legend"><span><i class="wind-legend"></i>ลม</span><span><i class="wave-legend"></i>คลื่น</span></div></div>
-          <div class="forecast-scroll"><div class="hour active-hour"><b>ตอนนี้</b><span>☀</span><strong>30°</strong><small>8 km/h</small><i style="height:36%"></i></div><div class="hour"><b>09:00</b><span>☀</span><strong>31°</strong><small>10 km/h</small><i style="height:46%"></i></div><div class="hour"><b>10:00</b><span>☀</span><strong>32°</strong><small>12 km/h</small><i style="height:54%"></i></div><div class="hour"><b>11:00</b><span>⛅</span><strong>32°</strong><small>14 km/h</small><i style="height:63%"></i></div><div class="hour"><b>12:00</b><span>⛅</span><strong>33°</strong><small>15 km/h</small><i style="height:70%"></i></div><div class="hour"><b>13:00</b><span>☁</span><strong>33°</strong><small>13 km/h</small><i style="height:59%"></i></div><div class="hour"><b>14:00</b><span>☁</span><strong>32°</strong><small>11 km/h</small><i style="height:49%"></i></div><div class="hour"><b>15:00</b><span>☀</span><strong>32°</strong><small>9 km/h</small><i style="height:39%"></i></div></div>
+          <div class="forecast-scroll"><div class="hour active-hour"><b>ตอนนี้</b><span>☀</span><strong>30°</strong><small>8 km/h</small><span class="bar"><i style="height:36%"></i></span></div><div class="hour"><b>09:00</b><span>☀</span><strong>31°</strong><small>10 km/h</small><span class="bar"><i style="height:46%"></i></span></div><div class="hour"><b>10:00</b><span>☀</span><strong>32°</strong><small>12 km/h</small><span class="bar"><i style="height:54%"></i></span></div><div class="hour"><b>11:00</b><span>⛅</span><strong>32°</strong><small>14 km/h</small><span class="bar"><i style="height:63%"></i></span></div><div class="hour"><b>12:00</b><span>⛅</span><strong>33°</strong><small>15 km/h</small><span class="bar"><i style="height:70%"></i></span></div><div class="hour"><b>13:00</b><span>☁</span><strong>33°</strong><small>13 km/h</small><span class="bar"><i style="height:59%"></i></span></div><div class="hour"><b>14:00</b><span>☁</span><strong>32°</strong><small>11 km/h</small><span class="bar"><i style="height:49%"></i></span></div><div class="hour"><b>15:00</b><span>☀</span><strong>32°</strong><small>9 km/h</small><span class="bar"><i style="height:39%"></i></span></div></div>
         </section>
 
         <section id="spots" class="bottom-grid">
-          <article class="spot-card"><div class="spot-image"><img src="https://images.unsplash.com/photo-1544550285-f813152fb2fd?auto=format&fit=crop&w=900&q=80" alt="เรือประมงในทะเลภาคใต้" /><span>ใกล้คุณ</span></div><div class="spot-content"><p class="eyebrow">FISHING SPOT</p><h2>อ่าวปัตตานี</h2><p>น้ำเดินดี เหมาะตกปลากะพงและปลาเก๋า</p><div><b>4.8 <small>★</small></b><button class="choose-spot">เลือกหมาย <span>→</span></button></div></div></article>
-          <article id="log" class="catch-cta"><div><p class="eyebrow">CATCH LOG</p><h2>ได้ปลาแล้วหรือยัง?</h2><p>บันทึกทริปนี้ไว้ดูสถิติและช่วยให้ชุมชนหาหมายดีขึ้น</p><button id="logCatch">+ บันทึกปลา</button></div><div class="fish-illustration" aria-hidden="true">⌁<span>◖</span></div></article>
+          <article class="spot-card glass spot rise" style="--i:9"><div class="spot-image"><img src="https://images.unsplash.com/photo-1544550285-f813152fb2fd?auto=format&fit=crop&w=900&q=80" alt="เรือประมงในทะเลภาคใต้" /><span>ใกล้คุณ</span></div><div class="spot-content"><p class="eyebrow">FISHING SPOT</p><h2>อ่าวปัตตานี</h2><p>น้ำเดินดี เหมาะตกปลากะพงและปลาเก๋า</p><div><b>4.8 <small>★</small></b><button class="choose-spot press">เลือกหมาย <span>→</span></button></div></div></article>
+          <article id="log" class="catch-cta glass spot rise" style="--i:10"><div><p class="eyebrow">CATCH LOG</p><h2>ได้ปลาแล้วหรือยัง?</h2><p>บันทึกทริปนี้ไว้ดูสถิติและช่วยให้ชุมชนหาหมายดีขึ้น</p><button id="logCatch" class="press">+ บันทึกปลา</button></div><div class="fish-illustration" aria-hidden="true">⌁<span>◖</span></div></article>
         </section>
       </main>
     </div>
     <div class="toast" id="toast" role="status">เปิดฟอร์มบันทึกปลาแล้ว</div>
     <dialog class="planner-dialog" id="planner">
-      <div class="planner-head"><div><p class="eyebrow">TRIP PLANNER</p><h2>วางแผนทริปตกปลา</h2></div><button class="close-planner" aria-label="ปิด">×</button></div>
+      <div class="planner-head"><div><p class="eyebrow">TRIP PLANNER</p><h2>วางแผนทริปตกปลา</h2></div><button class="close-planner press" aria-label="ปิด">×</button></div>
       <section class="planner-step spot-step" id="spotStep">
         <div class="step-copy"><span>1</span><div><b>เริ่มจากเลือกหมาย</b><small>คะแนนจะปรับตามตำแหน่งและรูปแบบการตก</small></div></div>
         <div class="spot-picker">
-          <button class="spot-option selected" data-spot="อ่าวปัตตานี"><span>⌖</span><span class="btn-text"><b>อ่าวปัตตานี</b><small>ปัตตานี · หน้าดิน / เหยื่อปลอม</small></span><i>✓</i></button>
-          <button class="spot-option" data-spot="แหลมสมิหลา"><span>⌖</span><span class="btn-text"><b>แหลมสมิหลา</b><small>สงขลา · ชายฝั่ง</small></span><i>✓</i></button>
-          <button class="spot-option" data-spot="เกาะหลีเป๊ะ"><span>⌖</span><span class="btn-text"><b>เกาะหลีเป๊ะ</b><small>สตูล · เรือ / จิ๊กกิ้ง</small></span><i>✓</i></button>
+          <button class="spot-option selected press glass-lite" data-spot="อ่าวปัตตานี"><span>⌖</span><span class="btn-text"><b>อ่าวปัตตานี</b><small>ปัตตานี · หน้าดิน / เหยื่อปลอม</small></span><i>✓</i></button>
+          <button class="spot-option press glass-lite" data-spot="แหลมสมิหลา"><span>⌖</span><span class="btn-text"><b>แหลมสมิหลา</b><small>สงขลา · ชายฝั่ง</small></span><i>✓</i></button>
+          <button class="spot-option press glass-lite" data-spot="เกาะหลีเป๊ะ"><span>⌖</span><span class="btn-text"><b>เกาะหลีเป๊ะ</b><small>สตูล · เรือ / จิ๊กกิ้ง</small></span><i>✓</i></button>
         </div>
-        <button class="show-calendar" id="showCalendar">ดูปฏิทินพยากรณ์ <span>→</span></button>
+        <button class="show-calendar press" id="showCalendar">ดูปฏิทินพยากรณ์ <span>→</span></button>
       </section>
       <section class="calendar-step" id="calendarStep" hidden>
-        <div class="calendar-context"><span>2</span><div><b id="selectedSpotLabel">อ่าวปัตตานี</b><small>คะแนนรวม น้ำ, Solunar, ลม, คลื่น และฝน</small></div><button class="change-spot">เปลี่ยนหมาย</button></div>
-        <div class="calendar-heading"><button class="month-control" aria-label="เดือนก่อนหน้า" disabled>‹</button><h3><span id="calendarMonth">สิงหาคม</span> <small id="calendarYear">2569</small></h3><button class="month-control" aria-label="เดือนถัดไป" disabled>›</button></div>
+        <div class="calendar-context"><span>2</span><div><b id="selectedSpotLabel">อ่าวปัตตานี</b><small>คะแนนรวม น้ำ, Solunar, ลม, คลื่น และฝน</small></div><button class="change-spot press">เปลี่ยนหมาย</button></div>
+        <div class="calendar-heading"><button class="month-control press" aria-label="เดือนก่อนหน้า" disabled>‹</button><h3><span id="calendarMonth">สิงหาคม</span> <small id="calendarYear">2569</small></h3><button class="month-control press" aria-label="เดือนถัดไป" disabled>›</button></div>
         <div class="calendar-week"><span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span></div>
         <div class="calendar-grid" id="calendarGrid" role="group" aria-label="ปฏิทินพยากรณ์รายวัน"></div>
         <div class="calendar-legend"><span><i class="excellent-key"></i>ยอดเยี่ยม 85+</span><span><i class="good-key"></i>ดี 70-84</span><span><i class="fair-key"></i>พอใช้ 55-69</span><span><i class="poor-key"></i>ไม่แนะนำ &lt;55</span></div>
-        <div class="day-detail"><div><p class="eyebrow">เลือกวัน</p><b id="pickedDate">ศ. 7 ส.ค. · คะแนน 82/100</b><small id="pickedReason">น้ำกำลังเดิน ลมเบา เหมาะตกปลากะพง</small></div><button id="saveTrip">+ บันทึกทริปนี้</button></div>
+        <div class="day-detail"><div><p class="eyebrow">เลือกวัน</p><b id="pickedDate">ศ. 7 ส.ค. · คะแนน 82/100</b><small id="pickedReason">น้ำกำลังเดิน ลมเบา เหมาะตกปลากะพง</small></div><button id="saveTrip" class="press">+ บันทึกทริปนี้</button></div>
         <div class="depth-note"><span>≋</span><p><b>ชั้นข้อมูลความลึกพร้อมผูกกับหมาย</b><small>ใช้แนวลึกอ่าวไทยและอันดามันจากกรมทรัพยากรธรณี แล้วแสดงเป็นข้อมูลประกอบเท่านั้น ไม่ใช้เพื่อการเดินเรือ</small></p></div>
       </section>
     </dialog>

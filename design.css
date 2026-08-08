@@ -1,0 +1,369 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   คลื่นดี — ชั้นระบบดีไซน์ (glassmorphism)
+   อ้างอิงนิยามจาก namethatui.com/styles/glassmorphism
+
+   สัญญาณสี่อย่างที่ต้องมีครบ ขาดข้อใดข้อหนึ่งแล้วไม่ใช่ glassmorphism
+     1. แผ่นโปร่งแสงเบลอพื้นหลัง
+     2. พื้นหลังจัดจ้านมองทะลุผ่านได้   ← ข้อที่พังบ่อยสุด ถ้าพื้นเรียบ กระจกจะอ่านเป็นเทาทึบ
+     3. ขอบคม 1px ขาวโปร่ง สว่างกว่าที่ขอบบน
+     4. ลอยเป็นชั้น เงาฟุ้งกว้าง
+
+   ไม่เปลี่ยนสี — ทุกสีมาจากพาเลตต์ทะเลเดิมใน styles.css
+   โหลดต่อจาก styles.css จึงเขียนทับได้โดยไม่ต้องแก้ไฟล์ที่ถูก minify ไว้
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── สูตรกระจก ────────────────────────────────────────────────────────
+     ธีมเข้ม จึงใช้ขาวโปร่งบาง ๆ ไม่ใช่ .12 ตามสูตรกลางของเอกสาร
+     ซึ่งเขียนไว้สำหรับพื้นสว่าง — ที่ .12 บนพื้น #061a27 แผ่นจะขุ่นเป็นนม */
+  --glass-bg: rgba(255, 255, 255, .065);
+  --glass-bg-strong: rgba(255, 255, 255, .085);
+  --glass-blur: blur(18px) saturate(165%);
+
+  /* ขอบคม ไม่ใช่กราเดียนฟุ้ง · ขอบบนสว่างกว่าเหมือนแสงตกกระทบสันกระจก */
+  --glass-line: rgba(255, 255, 255, .16);
+  --glass-line-top: rgba(255, 255, 255, .34);
+
+  /* เงาฟุ้งกว้างให้รู้สึกว่าแผ่นลอยอยู่เหนือพื้น ไม่ใช่แปะติด */
+  --glass-shadow: 0 10px 34px rgba(0, 0, 0, .38);
+  --glass-shadow-lg: 0 22px 60px rgba(0, 0, 0, .48);
+
+  --glass-radius: 16px;
+
+  /* ฟอนต์ตัวเลข — ทุกหลักกว้างเท่ากัน ค่าที่เปลี่ยนจึงไม่กระตุกซ้ายขวา */
+  --font-num: 'Jost', 'Noto Sans Thai', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ═══ 2. พื้นหลังจัดจ้าน ═══════════════════════════════════════════════
+   สัญญาณที่ขาดไม่ได้ที่สุด — กระจกจะเป็นกระจกก็ต่อเมื่อมีอะไรให้เบลอ
+   ใช้แค่ aqua / lime / orange ที่โปรเจคมีอยู่แล้ว ไม่เพิ่มสีใหม่
+   เบลอหนักและขยับช้ามาก เพื่อให้เป็นแสงนวล ไม่ใช่ก้อนสีที่แย่งสายตา */
+/* ⚠️ inset ต้องเล็ก — เปอร์เซ็นต์ตำแหน่งของกราเดียนอิง "กล่องนี้" ไม่ใช่ viewport
+   เคยตั้ง inset:-25% แล้วศูนย์กลางสีทั้งสี่ก้อนถูกดันออกไปนอกจอหมด
+   เหลือให้เห็นก้อนเดียว จอเลยดูเรียบ ๆ แล้วกระจกอ่านเป็นเทาทึบ
+   ไม่ใช้ filter: blur() แล้วด้วย — radial กว้างขนาดนี้นุ่มพออยู่แล้ว
+   และ blur บนชั้นเต็มจอกินแรง GPU ฟรี ๆ */
+.aurora-bg {
+  position: fixed;
+  inset: -6%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(58vmax 58vmax at 8% 4%, rgba(64, 222, 210, .34), transparent 62%),
+    radial-gradient(50vmax 50vmax at 94% 10%, rgba(200, 235, 105, .20), transparent 60%),
+    radial-gradient(60vmax 60vmax at 74% 98%, rgba(255, 185, 87, .20), transparent 64%),
+    radial-gradient(46vmax 46vmax at 28% 74%, rgba(86, 191, 240, .24), transparent 62%);
+  animation: auroraDrift 34s ease-in-out infinite alternate;
+}
+
+@keyframes auroraDrift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); }
+  to   { transform: translate3d(2%, 2%, 0) scale(1.07); }
+}
+
+/* ⚠️ body ต้องโปร่ง ไม่งั้น aurora หายหมด
+   ลำดับการวาดของ CSS: พื้นหลังของ root → ลูกที่ z-index ติดลบ → พื้นหลังของ body
+   styles.css ตั้ง body ไว้ทึบด้วย var(--bg) มันจึงทับ .aurora-bg มิด
+   สีพื้นฐานยังอยู่ที่ :root เหมือนเดิม จอจึงไม่ขาวถ้าอะไรพัง
+
+   ฟิล์มเกรนบาง ๆ ช่วยไม่ให้กราเดียนขนาดใหญ่แตกเป็นบั้ง (banding) */
+body {
+  background-color: transparent;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 60% 42% at 60% -15%, #144554 0%, transparent 80%);
+  background-repeat: repeat, no-repeat;
+  background-attachment: fixed, fixed;
+}
+
+/* ═══ 1 + 3 + 4. แผ่นกระจก ═════════════════════════════════════════════
+   .glass      = แผ่นเต็มสูตร ใช้กับ "พื้นผิว" ที่มีไม่กี่ใบต่อหน้า
+   .glass-lite = โปร่งแสง + ขอบ แต่ไม่เบลอพื้นหลัง
+                 ใช้กับของที่มีจำนวนมากในหน้าเดียว (ปฏิทิน 31 ใบ ปุ่ม ฯลฯ)
+                 เพราะ backdrop-filter แพงมากบนเครื่องอ่อน ๆ ซึ่งเอกสารเตือนไว้ */
+.glass,
+.glass-lite {
+  border: 1px solid var(--glass-line);
+  border-top-color: var(--glass-line-top);
+  border-radius: var(--glass-radius);
+  background-color: var(--glass-bg);
+  background-image: none;
+}
+
+.glass {
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-lite { box-shadow: 0 2px 10px rgba(0, 0, 0, .22); }
+
+/* แผ่นที่ต้องเด่นกว่าเพื่อนในหน้า — ทึบขึ้นนิดและลอยสูงกว่า */
+.glass-raised {
+  background-color: var(--glass-bg-strong);
+  box-shadow: var(--glass-shadow-lg);
+}
+
+/* ── ทางถอยเมื่อเบราว์เซอร์ไม่รองรับการเบลอ ──────────────────────────
+   เอกสารกำหนดว่าเลย์เอาต์ต้องอยู่ได้โดยไม่ซ่อนเนื้อหา ไม่ใช่หายไปเฉย ๆ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-lite { background-color: rgba(10, 37, 52, .90); }
+}
+
+/* ── เคารพผู้ที่ขอลดความโปร่งใส ───────────────────────────────────────
+   บางคนอ่านตัวอักษรบนพื้นโปร่งไม่ไหวจริง ๆ ให้ทึบเกือบเต็ม */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-lite,
+  .glass-raised {
+    background-color: rgba(10, 37, 52, .94);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .aurora-bg { opacity: .35; }
+}
+
+/* ═══ ใช้กับพื้นผิวเดิมของเว็บ ═════════════════════════════════════════
+   ของเดิมหลายชิ้นมีพื้นทึบหรือกราเดียนของตัวเอง ต้องถอดออกก่อน
+   ไม่งั้นพื้นทึบจะบังทุกอย่างแล้วกระจกไม่ทำงาน */
+.sidebar,
+.panel,
+.metric,
+.score-card,
+.spot-card,
+.catch-cta,
+.planner-dialog,
+.toast {
+  background-image: none;
+}
+
+/* แถบข้าง — กระจกยาวเต็มจอ เป็นชั้นที่อยู่หน้าสุดของหน้า */
+.sidebar {
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--glass-line);
+  border-radius: 0;
+}
+
+/* แถบบน — เส้นคั่นเดิมบางเกินจนหายไปบนพื้นจัดจ้าน */
+.topbar { border-bottom-color: var(--glass-line); }
+
+/* การ์ดคะแนน = พระเอกของหน้า ให้ลอยสูงสุด */
+.score-card { border-radius: 18px; }
+
+/* กล่องแผงหลัก */
+.panel { border-radius: 18px; }
+
+/* ── ของที่มีจำนวนมาก ใช้ glass-lite ───────────────────────────────── */
+.day,
+.spot-option,
+.hour.active-hour,
+.time-block,
+.major-window,
+.fish-tip,
+.date-control,
+.notification,
+.menu-button,
+.profile {
+  background-image: none;
+}
+
+.time-block {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-line);
+  border-top-color: var(--glass-line-top);
+  border-left-width: 2px;
+  border-radius: 12px;
+  padding-left: 12px;
+}
+
+.major-window,
+.fish-tip {
+  border-radius: 12px;
+}
+
+.fish-tip {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-line);
+  border-top-color: var(--glass-line-top);
+  padding: 12px;
+  margin-top: 14px;
+}
+
+/* ปุ่มบนแถบบนและปุ่มโปรไฟล์ */
+.date-control,
+.notification,
+.menu-button,
+.profile {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-line);
+  border-top-color: var(--glass-line-top);
+}
+
+/* ปฏิทิน — 31 ใบในหน้าเดียว ห้ามใส่ backdrop-filter เด็ดขาด
+   ใบที่มีคะแนนมีสีของตัวเองอยู่แล้ว ปล่อยให้สีนั้นทำงานต่อไป */
+.day {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-line);
+  border-top-color: var(--glass-line-top);
+}
+
+/* ═══ กล่องซ้อนกล่อง ═══════════════════════════════════════════════════
+   กระจกซ้อนกระจกจะขุ่นทวีคูณจนอ่านไม่ออก
+   ของที่อยู่ "ใน" แผ่นกระจกแล้ว ให้ใช้แค่ขอบกับพื้นจาง ไม่เบลอซ้ำ */
+.panel .glass,
+.planner-dialog .glass {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ═══ กล่องโต้ตอบ ═════════════════════════════════════════════════════ */
+.planner-dialog {
+  background-color: rgba(255, 255, 255, .085);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  border: 1px solid var(--glass-line);
+  border-top-color: var(--glass-line-top);
+  border-radius: 20px;
+  box-shadow: var(--glass-shadow-lg);
+}
+
+.planner-dialog::backdrop {
+  background: rgba(2, 11, 18, .58);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* แถบแจ้งเตือน — เป็นชิ้นเดียวที่คงพื้นทึบไว้โดยตั้งใจ
+   มันโผล่มาทับเนื้อหาอะไรก็ได้ ถ้าโปร่งจะอ่านไม่ออกในบางจังหวะ
+   เอกสารเรียกกรณีนี้ว่า contrast scrim */
+.toast {
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-top-color: rgba(255, 255, 255, .5);
+  box-shadow: var(--glass-shadow-lg);
+}
+
+/* ═══ จังหวะการกด ═════════════════════════════════════════════════════
+   ⚠️ ตั้งใจไม่เรียกว่า liquid — เอกสารเตือนชัดว่าอย่าหลงไปเป็น
+   Liquid Glass ของ Apple ซึ่งเป็นวัสดุคนละตัวและใช้กับชั้นควบคุมเท่านั้น
+   ตัวนี้เป็นแค่ผลตอบรับตอนกด ไม่ใช่วัสดุ
+
+   ไฟล์นี้โหลดหลัง styles.css จึงชนะเสมอ — คลาสที่ตั้ง position ต้องกัน
+   ไม่ให้ทับ absolute/fixed ที่คนอื่นใส่มาคู่กัน (บทเรียนจาก ite-avm ที่
+   เคยทำแท่งเวลาบนปฏิทินวางผิดตำแหน่งจนหาบั๊กไม่เจอหลายรอบ) */
+.press:not(.is-absolute):not(.is-fixed) { position: relative; }
+
+.press {
+  transition: transform .2s cubic-bezier(.22, 1, .36, 1), box-shadow .2s ease,
+              background-color .2s ease, border-color .2s ease;
+}
+
+.press:hover {
+  background-color: rgba(255, 255, 255, .11);
+  border-top-color: rgba(255, 255, 255, .45);
+}
+
+.press:active { transform: scale(.96); }
+
+/* ═══ ทยอยโผล่ ════════════════════════════════════════════════════════
+   ใส่ .rise ที่ลูกแล้วกำหนด --i เป็นลำดับ หน่วงทีละ 45ms
+   เลื่อนอย่างเดียวไม่ scale เพราะ scale ทำให้ตัวอักษรไทยเบลอตอนวิ่ง */
+.rise {
+  animation: riseUp 420ms cubic-bezier(.22, 1, .36, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes riseUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.page-in { animation: pageIn 300ms ease-out both; }
+
+@keyframes pageIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ═══ แสงวิ่งตามเคอร์เซอร์บนสันกระจก ═════════════════════════════════
+   ตำแหน่งมาจาก --mx/--my ที่ app.js เขียนให้ตอน pointermove
+   จอสัมผัสไม่มีเคอร์เซอร์ app.js จึงไม่ผูก listener เลย */
+.spot { position: relative; }
+
+.spot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(22rem circle at var(--mx, 50%) var(--my, 0px),
+              rgba(255, 255, 255, .55), transparent 72%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity .28s ease;
+  pointer-events: none;
+}
+
+.spot:hover::after { opacity: 1; }
+
+/* ═══ ตัวอักษร ════════════════════════════════════════════════════════
+   ภาษาไทยซ้อนสระบนกับวรรณยุกต์ได้ถึงสามชั้น line-height ต่ำกว่า 1.28
+   เมื่อไหร่ วรรณยุกต์บรรทัดล่างจะชนสระบรรทัดบน ของเดิมตั้งพาดหัวไว้ 1.18 */
+.hero-copy h1 { line-height: 1.3; }
+
+/* ═══ ตัวเลข ══════════════════════════════════════════════════════════ */
+.score-number b,
+.current-height,
+.metric b,
+.day b,
+.day span,
+.hour strong,
+.tide-events b,
+.tide-events strong,
+.time-block strong,
+.spot-content b {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.score-number b { font-weight: 500; letter-spacing: -.035em; }
+.current-height,
+.metric b { font-weight: 500; }
+
+/* ═══ แท่งกราฟรายชั่วโมง ══════════════════════════════════════════════
+   เดิมแท่งเป็น absolute สูงเป็น % ของกล่อง 155px พอลมแรง 70% = 108px
+   มันพุ่งขึ้นไปทับเลขอุณหภูมิกับความเร็วลม (เห็นชัดช่วง 11:00-13:00)
+   ให้แท่งมีรางสูงคงที่ เปอร์เซ็นต์จึงอิงราง สัดส่วนระหว่างแท่งเท่าเดิม */
+.hour { padding-bottom: 62px; }
+
+.hour .bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.hour .bar i {
+  position: static;
+  width: 18px;
+}
+
+/* ═══ เคารพการตั้งค่าลดการเคลื่อนไหว ══════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .page-in,
+  .aurora-bg { animation: none; }
+  .press:active { transform: none; }
+  .spot::after { display: none; }
+}

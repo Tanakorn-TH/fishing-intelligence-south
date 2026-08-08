@@ -129,7 +129,7 @@ function buildCalendar() {
   DAY_SCORES.forEach((score, index) => {
     const day = index + 1;
     const today = isCurrentMonth && now.getDate() === day ? ' today' : '';
-    markup.push(`<button class="day ${scoreTier(score)}${today}" data-day="${day}"><b>${day}</b><span>${score}</span></button>`);
+    markup.push(`<button class="day press ${scoreTier(score)}${today}" data-day="${day}"><b>${day}</b><span>${score}</span></button>`);
   });
 
   calendarGrid.innerHTML = markup.join('');
@@ -141,6 +141,20 @@ function buildCalendar() {
 }
 
 buildCalendar();
+
+/* ขอบเรืองตามเคอร์เซอร์ — เขียนตำแหน่งเมาส์ให้ .spot::after ใน design.css
+   จอสัมผัสไม่มีเคอร์เซอร์จริง ไม่ผูก listener เลย จะได้ไม่เปลืองแรงเครื่อง
+   และคนที่ตั้งค่าลดการเคลื่อนไหวไว้ก็ไม่ต้องคำนวณอะไรทั้งนั้น */
+if (window.matchMedia('(pointer: fine)').matches
+    && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  document.querySelectorAll('.spot').forEach((card) => {
+    card.addEventListener('pointermove', (event) => {
+      const box = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${event.clientX - box.left}px`);
+      card.style.setProperty('--my', `${event.clientY - box.top}px`);
+    });
+  });
+}
 
 document.getElementById('saveTrip').addEventListener('click', () => {
   savedTrip = {
