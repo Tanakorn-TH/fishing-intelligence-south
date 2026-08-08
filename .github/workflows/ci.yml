@@ -30,6 +30,11 @@ jobs:
       - name: ตรวจว่า id ที่ app.js เรียกหามีอยู่จริงใน index.html
         run: node scripts/check-dom-ids.mjs
 
+      # เซิร์ฟเวอร์ตั้งแคชไฟล์สแตติกไว้ 10 ปี ถ้า ?v= ไม่ตรงกับเวอร์ชัน
+      # ผู้ใช้เดิมจะยังได้ไฟล์เก่าต่อไปโดยไม่มีอะไรฟ้อง — เทสต์ผ่านหมดแต่คนไม่เห็นของใหม่
+      - name: ตรวจว่าเลขเวอร์ชันตรงกันทุกที่
+        run: node scripts/check-version.mjs
+
       - name: ตรวจ HTML ตามสเปกและ accessibility
         run: npx --yes html-validate@9 index.html
 

@@ -51,6 +51,7 @@ step "ทดสอบในเครื่องก่อนส่ง"
 command -v node >/dev/null || die "ไม่พบ node"
 node --check app.js
 node scripts/check-dom-ids.mjs
+node scripts/check-version.mjs
 npx --yes html-validate@9 index.html
 echo "ผ่านครบ"
 
