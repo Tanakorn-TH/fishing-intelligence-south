@@ -80,3 +80,66 @@ jobs:
             exit 1
           fi
           echo 'ลำดับแกนเป็น Lat ก่อน Lon ตามที่บันทึกไว้'
+
+  api:
+    name: ตรวจ API
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: fishing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      MYSQL_PWD: root
+      MYSQL: mysql -h 127.0.0.1 -P 3306 -uroot --default-character-set=utf8mb4 fishing
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_NAME: fishing
+      DB_USER: root
+      DB_PASSWORD: root
+    steps:
+      - uses: actions/checkout@v4
+
+      # เผื่อกรณีเซิร์ฟเวอร์ถูกลดเวอร์ชันลง โค้ดเขียนให้รันได้ตั้งแต่ 8.1
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+      - name: ตรวจไวยากรณ์ PHP บน 8.1 (ขอบล่างที่รองรับ)
+        run: find api tests -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      # เวอร์ชันที่ fishing.yru.ac.th ใช้จริง — integration test รันบนตัวนี้
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql
+      - name: ตรวจไวยากรณ์ PHP บน 8.4 (เวอร์ชันบนเซิร์ฟเวอร์จริง)
+        run: find api tests -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: ติดตั้ง mysql client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mysql-client
+
+      - name: เตรียมฐานข้อมูลและข้อมูลทดสอบ
+        run: |
+          $MYSQL < data-model.sql
+          $MYSQL < tests/fixtures.sql
+
+      - name: รัน API แล้วทดสอบผ่าน HTTP จริง
+        run: |
+          php -S 127.0.0.1:8080 -t . > /tmp/php-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8080/api/gear.php?style=shore\&depth=1 > /dev/null && break
+            sleep 1
+          done
+          API_BASE=http://127.0.0.1:8080 php tests/api-test.php
+
+      - name: log ของเซิร์ฟเวอร์ ถ้าเทสต์ล้ม
+        if: failure()
+        run: cat /tmp/php-server.log

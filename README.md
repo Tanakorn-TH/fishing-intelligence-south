@@ -43,12 +43,35 @@ fishing-intelligence-south/
 ├── data-model.sql        # สคีมา MySQL 8 พร้อม seed ของ gear_rules
 ├── BATHYMETRY_IMPORT.md  # ขั้นตอนนำเข้าข้อมูลความลึกท้องทะเลจากกรมทรัพยากรธรณี
 ├── CONTRIBUTING.md       # แนวทางร่วมพัฒนา กติกา PR และสิ่งที่ CI ตรวจ
+├── api/                  # backend PHP
+│   ├── spots.php         # GET รายการหมายตกปลาสาธารณะ
+│   ├── gear.php          # GET กติกาแนะนำอุปกรณ์ตาม style + depth
+│   └── lib/              # config, PDO, JSON helper (ห้ามเรียกตรงจากเว็บ)
+├── tests/                # ชุดทดสอบ API ที่ CI รัน
 ├── scripts/
 │   └── check-dom-ids.mjs # ตรวจว่า id ที่ app.js เรียกหา มีจริงใน index.html
 ├── .htmlvalidate.json    # ชุดกฎตรวจ HTML
 ├── .github/workflows/    # GitHub Actions
 └── README.md
 ```
+
+## API
+
+PHP ล้วน ไม่ใช้ framework ไม่ต้อง composer ต่อฐานข้อมูลด้วย PDO + prepared statement
+
+| endpoint | คืนอะไร |
+|---|---|
+| `GET /api/spots.php` | หมายตกปลาสาธารณะ พร้อมพิกัดและช่วงความลึก |
+| `GET /api/gear.php?style=shore&depth=4.5` | กติกาอุปกรณ์ที่ครอบคลุมความลึกนั้น |
+
+### ⚠️ การวางไฟล์บนเซิร์ฟเวอร์
+
+**`.env` ต้องอยู่นอก document root** แล้วชี้ตำแหน่งด้วย environment variable `FIS_ENV_FILE`
+หรือจะตั้งค่า `DB_HOST` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` เป็น environment variable ตรง ๆ ก็ได้ (วิธีนี้ปลอดภัยกว่า)
+
+เหตุผล: เซิร์ฟเวอร์ปลายทางเป็น nginx อยู่หน้า Apache ซึ่ง nginx มักเสิร์ฟไฟล์สแตติกเองโดยไม่ผ่าน Apache
+แปลว่า `.htaccess` **อาจกัน `.env` ไม่ได้** ถ้าวางไว้ใน document root จะมีคนเปิด `https://โดเมน/.env`
+อ่านรหัสผ่านฐานข้อมูลไปได้ทันที
 
 ## การรัน
 
