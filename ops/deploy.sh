@@ -58,8 +58,35 @@ echo "ผ่านครบ"
 # ประกาศชัดเจนทีละไฟล์ ไม่กวาดทั้งโฟลเดอร์
 # เพื่อไม่ให้ .git .env tests scripts หรือไฟล์เอกสารหลุดขึ้น production
 ROOT_FILES=(index.html styles.css design.css fonts.css app.js)
-API_FILES=(api/spots.php api/gear.php api/health.php)
-LIB_FILES=(api/lib/config.php api/lib/db.php api/lib/http.php api/lib/.htaccess)
+API_FILES=(
+  api/spots.php api/gear.php api/health.php
+  api/weather.php api/solunar.php api/tides.php api/score.php
+)
+LIB_FILES=(
+  api/lib/config.php api/lib/db.php api/lib/http.php api/lib/.htaccess
+  api/lib/astro.php api/lib/cache.php api/lib/remote.php api/lib/conditions.php
+)
+
+# ---------- 3ก. กันรายการตกหล่น ----------
+# รายการข้างบนเขียนมือเพื่อไม่ให้ .git .env tests หลุดขึ้น production
+# ข้อเสียคือพอเพิ่ม endpoint ใหม่แล้วลืมมาต่อท้าย ไฟล์นั้นจะไม่ถูกส่งขึ้นไปเงียบ ๆ
+# หน้าเว็บที่เรียกมันจะพังบน production ทั้งที่ในเครื่องทดสอบผ่านหมด
+#
+# เคยเกิดมาแล้วจริง: weather/solunar/tides/score กับ lib อีก 4 ตัวตกค้างอยู่ในเครื่อง
+# ไม่เคยขึ้น production เลย จึงเพิ่มด่านนี้ไว้ให้ล้มตั้งแต่ก่อนส่ง แทนที่จะไปพังบนเว็บจริง
+step "ตรวจว่าไม่มีไฟล์ PHP ตกหล่นจากรายการ"
+LISTED=" ${API_FILES[*]} ${LIB_FILES[*]} "
+MISSING_FROM_LIST=()
+while IFS= read -r found; do
+  [[ "$LISTED" == *" $found "* ]] || MISSING_FROM_LIST+=("$found")
+done < <(find api -name '*.php' | sort)
+
+if [ "${#MISSING_FROM_LIST[@]}" -gt 0 ]; then
+  echo "ไฟล์เหล่านี้มีอยู่ในโปรเจคแต่ไม่อยู่ในรายการที่จะส่ง:" >&2
+  printf '  %s\n' "${MISSING_FROM_LIST[@]}" >&2
+  die "เพิ่มเข้า API_FILES หรือ LIB_FILES ใน ops/deploy.sh ก่อน แล้วค่อย deploy"
+fi
+echo "ครบทุกไฟล์"
 # ฟอนต์ self-host — ไล่จากไฟล์จริงในโฟลเดอร์ ไม่ต้องมาแก้สคริปต์ทุกครั้งที่เพิ่มน้ำหนัก
 mapfile -t FONT_FILES < <(find fonts -maxdepth 1 -name '*.woff2' | sort)
 [ "${#FONT_FILES[@]}" -gt 0 ] || die "ไม่พบไฟล์ฟอนต์ใน fonts/"
