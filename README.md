@@ -19,7 +19,7 @@
 | หน้าเว็บ | Vanilla HTML + CSS + JS ไม่มี build step ไม่มี dependency |
 | ภาษา | UI ภาษาไทยทั้งหมด (`lang="th"`) ใช้ฟอนต์ Noto Sans Thai + DM Mono |
 | ธีม | Dark ocean — พื้นน้ำเงินเข้ม เน้นสี aqua / lime / orange |
-| ฐานข้อมูล | PostgreSQL 16 + PostGIS (สคีมาเตรียมไว้แล้วใน `data-model.sql`) |
+| ฐานข้อมูล | MySQL 8 (สคีมาเตรียมไว้แล้วใน `data-model.sql`) |
 
 ### ฟีเจอร์ในหน้าเว็บตอนนี้
 
@@ -40,7 +40,7 @@ fishing-intelligence-south/
 ├── index.html            # โครงหน้าเว็บทั้งหมด (sidebar, dashboard, planner dialog)
 ├── styles.css            # สไตล์ทั้งหมด แบบ minified บรรทัดเดียว ใช้ CSS custom properties
 ├── app.js                # ตัวจัดการ interaction: nav, planner, ปฏิทิน, toast
-├── data-model.sql        # สคีมา PostgreSQL + PostGIS พร้อม seed ของ gear_rules
+├── data-model.sql        # สคีมา MySQL 8 พร้อม seed ของ gear_rules
 ├── BATHYMETRY_IMPORT.md  # ขั้นตอนนำเข้าข้อมูลความลึกท้องทะเลจากกรมทรัพยากรธรณี
 ├── CONTRIBUTING.md       # แนวทางร่วมพัฒนา กติกา PR และสิ่งที่ CI ตรวจ
 ├── scripts/
@@ -70,24 +70,37 @@ python -m http.server 5173
 
 ## ฐานข้อมูล
 
+**MySQL 8.0.13 ขึ้นไป** — ใช้ SRID บนคอลัมน์ geometry, CHECK constraint และ generated column
 `data-model.sql` ออกแบบให้ความลึกท้องทะเลเป็น **ข้อมูลประกอบการวางแผน ไม่ใช่ข้อมูลเดินเรือ**
 
 | ตาราง | หน้าที่ |
 |---|---|
 | `data_sources` | ทะเบียนแหล่งข้อมูล — URL, ผู้เผยแพร่, สัญญาอนุญาต, วันที่ดึงข้อมูล |
-| `bathymetry_contours` | เส้นชั้นความลึก (MultiLineString, EPSG:4326) พร้อม vertical datum |
-| `fishing_spots` | หมายตกปลา (Point, EPSG:4326) แยกสาธารณะ / ส่วนตัว |
+| `bathymetry_contours` | เส้นชั้นความลึก (MULTILINESTRING SRID 4326) พร้อม vertical datum |
+| `fishing_spots` | หมายตกปลา (POINT SRID 4326) แยกสาธารณะ / ส่วนตัว |
 | `spot_depth_profiles` | ความลึกที่คำนวณได้รอบหมายภายในรัศมีที่ประกาศไว้ |
 | `gear_rules` | กติกาแนะนำอุปกรณ์ตามรูปแบบการตก × ช่วงความลึก |
-| `trip_plans` | ทริปที่วางไว้ พร้อม `score_inputs` (JSONB) ที่ใช้คำนวณคะแนน |
+| `trip_plans` | ทริปที่วางไว้ พร้อม `score_inputs` (JSON) ที่ใช้คำนวณคะแนน |
 | `trip_gear_items` | เช็กลิสต์อุปกรณ์ของแต่ละทริป |
 | `catch_logs` | บันทึกปลาที่ได้ ผูกกับทริป |
 
 ติดตั้ง:
 
 ```bash
-psql -d fishing -f data-model.sql
+mysql -u USER -p --default-character-set=utf8mb4 DBNAME < data-model.sql
 ```
+
+### ⚠️ ลำดับแกนพิกัด
+
+MySQL ใช้ SRID 4326 แบบ **Latitude ก่อน Longitude** ตรงข้ามกับ PostGIS
+
+```sql
+POINT(6.87 101.25)   -- ถูก: อ่าวปัตตานี (lat 6.87, lon 101.25)
+POINT(101.25 6.87)   -- ผิด: MySQL ปฏิเสธ เพราะ 101.25 เกินช่วงละติจูด
+```
+
+โชคดีที่ลองจิจูดของภาคใต้อยู่ราว 98-103 ซึ่งเกินช่วง `[-90, 90]` ของละติจูด
+ถ้าใครเขียนสลับ MySQL จะ error ทันที ไม่ใช่คำนวณผิดเงียบ ๆ — CI มีขั้นตอนตรวจข้อนี้ไว้
 
 ขั้นตอนนำเข้าชั้นข้อมูลความลึกอยู่ใน [BATHYMETRY_IMPORT.md](BATHYMETRY_IMPORT.md)
 

@@ -22,7 +22,7 @@ python -m http.server 5173
 | `index.html` | โครงหน้าเว็บทั้งหมด รวม dialog ปฏิทินทริป |
 | `styles.css` | สไตล์ทั้งหมด |
 | `app.js` | interaction ทั้งหมด — nav, planner, ปฏิทิน, toast |
-| `data-model.sql` | สคีมา PostgreSQL + PostGIS |
+| `data-model.sql` | สคีมา MySQL 8 |
 | `BATHYMETRY_IMPORT.md` | ขั้นตอนนำเข้าชั้นข้อมูลความลึก |
 | `scripts/check-dom-ids.mjs` | ตัวตรวจของ CI |
 | `.htmlvalidate.json` | ชุดกฎตรวจ HTML |
@@ -32,13 +32,20 @@ python -m http.server 5173
 1. แตก branch จาก `main` ตั้งชื่อสื่อความหมาย เช่น `feat/tide-api`, `fix/calendar-offset`
 2. commit เป็นก้อนย่อย ๆ ที่อธิบายได้ว่าแก้อะไรและ**ทำไม**
 3. เปิด Pull Request เข้า `main` — push ตรงเข้า `main` ไม่ได้ ต้องผ่าน PR และ CI ต้องเขียว
-4. ให้เพื่อนร่วมทีมรีวิวอย่างน้อย 1 คนก่อน merge
+4. ให้เพื่อนร่วมทีมรีวิวก่อน merge — ตอนนี้ ruleset ตั้ง required approvals ไว้ที่ `0`
+   เพราะยังทำกันคนเดียว (GitHub ไม่ให้ approve PR ของตัวเอง) พอมีคนที่สองแล้วให้ปรับกลับเป็น `1`
 
 ## CI ตรวจอะไรบ้าง
 
 ทุก PR จะรัน [.github/workflows/ci.yml](.github/workflows/ci.yml) 2 job
 
-**`frontend` — ตรวจ HTML / JavaScript**
+> ⚠️ **ห้ามเปลี่ยนค่า `name:` ของ job ใน `ci.yml` โดยไม่แก้ ruleset ตาม**
+> branch protection บังคับ check ตาม**ชื่อ** ถ้าเปลี่ยนชื่อ job แล้วไม่แก้ ruleset
+> PR ทุกอันจะค้างรอ check ที่ไม่มีวันมา ทั้งที่ CI เขียวหมด
+> แก้ที่ Settings → Rules → protect-main → Require status checks to pass
+> (เคยเกิดมาแล้วตอนเปลี่ยนสคีมาจาก PostgreSQL เป็น MySQL)
+
+**`frontend` — ตรวจฝั่งหน้าเว็บ**
 
 | ขั้นตอน | รันเองในเครื่อง |
 |---|---|
@@ -49,19 +56,20 @@ python -m http.server 5173
 ตัวตรวจ id มีไว้เพราะบั๊กแบบนี้เคยเกิดจริง — `getElementById` คืน `null` แล้วสคริปต์ตายเงียบตอนโหลดหน้า
 หน้าเว็บดูเหมือนปกติแต่กดอะไรไม่ได้เลย และจะไม่เห็นอะไรถ้าไม่เปิด devtools
 
-**`schema` — โหลดสคีมาเข้า PostgreSQL + PostGIS**
+**`schema` — ตรวจสคีมาฐานข้อมูล**
 
-รัน `data-model.sql` บนฐานข้อมูลเปล่า แล้วเช็คว่า view เรียกได้และ seed ครบ
+รัน `data-model.sql` บนฐานข้อมูลเปล่า เช็คว่า view เรียกได้ seed ครบ และ**ลำดับแกน SRID 4326 ยังเป็น Lat ก่อน Lon**
 job นี้มีเพราะเคยมีบั๊กที่ view เลือกคอลัมน์ที่ยังไม่มีในตาราง ทำให้ไฟล์รันไม่ผ่านตั้งแต่ต้น
+ส่วนขั้นตรวจลำดับแกนมีไว้กันกรณีที่ร้ายกว่า — ถ้าแกนสลับ พิกัดทั้งระบบจะผิดโดยไม่มีใครรู้
 
 รันเองในเครื่อง (ต้องมี Docker):
 
 ```bash
-docker run --rm -d --name fishing-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=fishing -p 5432:5432 postgis/postgis:16-3.4
+docker run --rm -d --name fishing-db -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=fishing -p 3306:3306 mysql:8.0
 ```
 
 ```bash
-PGPASSWORD=postgres psql -h localhost -U postgres -d fishing -v ON_ERROR_STOP=1 -f data-model.sql
+MYSQL_PWD=root mysql -h 127.0.0.1 -uroot --default-character-set=utf8mb4 fishing < data-model.sql
 ```
 
 ## แนวทางเขียนโค้ด
@@ -72,6 +80,10 @@ PGPASSWORD=postgres psql -h localhost -U postgres -d fishing -v ON_ERROR_STOP=1 
 - **วันที่ต้องคำนวณจาก `Date` เสมอ** อย่าฮาร์ดโค้ดชื่อวันหรือชื่อเดือน — เคยพลาดมาแล้ว
 - **แยก `.today` กับ `.selected` ให้ชัด** "วันนี้" กับ "วันที่ผู้ใช้เลือก" เป็นคนละสถานะ
 - **ค่าที่เป็นข้อมูลตัวอย่าง ให้เขียนคอมเมนต์กำกับ** ว่ารอต่อ API อะไร
+- **พิกัดใน MySQL เขียน `POINT(lat lon)` เสมอ** — SRID 4326 บน MySQL ใช้ละติจูดก่อน ตรงข้ามกับ PostGIS
+  ถ้าคุณคุ้นกับ PostGIS หรือ GeoJSON (ซึ่งใช้ lon ก่อน) ต้องสลับก่อนเขียนลงฐานข้อมูล
+- **คิวรีระยะทางต้องกรองด้วย `MBRIntersects` ก่อนเสมอ** MySQL ใช้ SPATIAL INDEX ได้เฉพาะฟังก์ชันตระกูล MBR
+  ถ้าเรียก `ST_Distance_Sphere` ตรง ๆ อย่างเดียว จะสแกนทั้งตาราง — ดูตัวอย่างท้าย `data-model.sql`
 
 ## หนี้ทางเทคนิคที่รู้อยู่แล้ว
 

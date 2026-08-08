@@ -12,8 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ชื่อ job = ชื่อ check ที่ branch protection บังคับ
+  # ตั้งให้บอกว่า "ตรวจอะไร" ไม่ใช่ "ตรวจด้วยอะไร" การเปลี่ยนเครื่องมือจะได้ไม่ทำ ruleset พัง
   frontend:
-    name: ตรวจ HTML / JavaScript
+    name: ตรวจฝั่งหน้าเว็บ
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,39 +34,49 @@ jobs:
         run: npx --yes html-validate@9 index.html
 
   schema:
-    name: โหลดสคีมาเข้า PostgreSQL + PostGIS
+    name: ตรวจสคีมาฐานข้อมูล
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: postgis/postgis:16-3.4
+      mysql:
+        image: mysql:8.0
         env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: fishing
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: fishing
         ports:
-          - 5432:5432
+          - 3306:3306
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     env:
-      PGPASSWORD: postgres
-      PSQL: psql -h localhost -U postgres -d fishing -v ON_ERROR_STOP=1
+      MYSQL_PWD: root
+      MYSQL: mysql -h 127.0.0.1 -P 3306 -uroot --default-character-set=utf8mb4 fishing
     steps:
       - uses: actions/checkout@v4
 
-      - name: ติดตั้ง psql client
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: ติดตั้ง mysql client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mysql-client
 
       # จับบั๊กแบบที่เคยเจอ เช่น view อ้างคอลัมน์ที่ไม่มีอยู่จริง
       - name: รัน data-model.sql บนฐานข้อมูลเปล่า
-        run: $PSQL -f data-model.sql
+        run: $MYSQL < data-model.sql
 
       - name: ตรวจว่า view และ seed ใช้งานได้
         run: |
-          $PSQL -c 'SELECT * FROM spot_planning_summary LIMIT 0;'
-          count=$($PSQL -tAc 'SELECT count(*) FROM gear_rules;')
+          $MYSQL -e 'SELECT * FROM spot_planning_summary LIMIT 0;'
+          count=$($MYSQL -N -B -e 'SELECT COUNT(*) FROM gear_rules;')
           if [ "$count" != "4" ]; then
             echo "gear_rules ต้องมี 4 แถวหลัง seed แต่ได้ $count"
             exit 1
           fi
+
+      # กับดักที่อันตรายที่สุดของโปรเจค ถ้าลำดับแกนเปลี่ยน พิกัดทั้งระบบจะผิด
+      - name: ตรวจลำดับแกน SRID 4326 ว่ายังเป็น Lat ก่อน Lon
+        run: |
+          $MYSQL -e "SELECT ST_GeomFromText('POINT(6.87 101.25)', 4326);" > /dev/null
+          if $MYSQL -e "SELECT ST_GeomFromText('POINT(101.25 6.87)', 4326);" > /dev/null 2>&1; then
+            echo 'เซิร์ฟเวอร์ยอมรับ POINT(lon lat) ซึ่งไม่ตรงกับที่ data-model.sql ระบุไว้'
+            exit 1
+          fi
+          echo 'ลำดับแกนเป็น Lat ก่อน Lon ตามที่บันทึกไว้'
