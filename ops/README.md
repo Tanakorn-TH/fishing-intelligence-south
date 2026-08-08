@@ -1,82 +1,104 @@
 # การนำขึ้นระบบจริง
 
 ปลายทาง: `https://fishing.yru.ac.th` — Apache 2.4.65 + mod_fcgid + PHP 8.4.11 + MySQL 8.0.46
-เข้าถึงผ่าน SSH (พอร์ต 22, OpenSSH 8.9p1) ต้องอยู่ในเครือข่ายมหาวิทยาลัย (เซิร์ฟเวอร์อยู่วง 10.10.2.x)
+เซิร์ฟเวอร์อยู่วง `10.10.2.164` ต้องอยู่ในเครือข่ายมหาวิทยาลัยถึงจะเข้าถึงได้
+
+## ข้อจำกัดของบัญชีบนเซิร์ฟเวอร์
+
+บัญชี `fishing` เป็น **sftp-only** — ล็อกอินด้วยกุญแจ SSH ได้ แต่**รันคำสั่งบนเซิร์ฟเวอร์ไม่ได้**
+
+```
+$ ssh fishing@fishing.yru.ac.th "ls"
+This service allows sftp connections only.
+```
+
+การ deploy จึงเป็นการส่งไฟล์ล้วน ๆ ผ่าน SFTP ไม่มีขั้นตอนที่ต้องสั่งงานฝั่งเซิร์ฟเวอร์
+(อย่าเสียเวลาเขียนสคริปต์แบบ `tar | ssh` หรือ `ssh ... "command"` — ใช้ไม่ได้)
+
+โครงสร้างโฟลเดอร์บนเซิร์ฟเวอร์
+
+```
+/home/fishing/web/fishing.yru.ac.th/
+├── public_html/   ← document root  (index.html, styles.css, app.js, api/)
+├── private/       ← อยู่นอก document root  (.env อยู่ตรงนี้)
+├── logs/
+└── cgi-bin/  document_errors/  stats/
+```
 
 ## ตั้งค่าครั้งเดียว
 
 ### 1. ไฟล์ตั้งค่า deploy
 
-คัดลอก `ops/deploy.env.example` ไปไว้ที่ `~/.fishing-secrets/deploy.env` แล้วเติม `DEPLOY_USER` กับ `DEPLOY_PATH`
-เก็บไว้นอก repo เสมอ
+คัดลอก `ops/deploy.env.example` ไปไว้ที่ `~/.fishing-secrets/deploy.env` แล้วเติมค่า เก็บไว้นอก repo เสมอ
 
 ### 2. กุญแจ SSH
 
-สร้างกุญแจแล้วส่ง public key ขึ้นเซิร์ฟเวอร์ ทำครั้งเดียวจบ ไม่ต้องพิมพ์รหัสผ่านทุกครั้งที่ deploy
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/fishing_deploy -N "" -C "fishing deploy"
+```
+
+ปกติส่งกุญแจขึ้นด้วย `ssh-copy-id` แต่ถ้ารหัส SSH ใช้ไม่ได้ (บัญชีนี้รหัส FTP กับ SSH เป็นคนละตัว)
+ให้ส่งผ่าน FTPS แทน — วางไฟล์ที่ `~/.ssh/authorized_keys` แล้ว **ต้องตั้งสิทธิ์ด้วย**
+เพราะ FTP อัปโหลดมาเป็น `664` ซึ่ง sshd จะปฏิเสธ (ห้าม group เขียนได้)
+
+```
+SITE CHMOD 700 /.ssh
+SITE CHMOD 600 /.ssh/authorized_keys
+```
+
+คำสั่ง `MFF UNIX.mode` ใช้ไม่ได้กับเซิร์ฟเวอร์นี้ ต้องใช้ `SITE CHMOD`
+
+### 3. deploy ครั้งแรก
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/fishing_deploy -C "fishing deploy"
+bash ops/deploy.sh --setup
 ```
 
-```bash
-ssh-copy-id -i ~/.ssh/fishing_deploy.pub ผู้ใช้@fishing.yru.ac.th
-```
+`--setup` จะทำเพิ่มจากการส่งโค้ดปกติ 2 อย่าง
 
-แล้วใส่ `DEPLOY_SSH_KEY=~/.ssh/fishing_deploy` ใน `deploy.env`
+- สร้าง `.env` สำหรับเซิร์ฟเวอร์จาก `.env` ในเครื่อง โดย**เปลี่ยน `DB_HOST` เป็น `localhost`**
+  (บนเซิร์ฟเวอร์ PHP กับ MySQL อยู่เครื่องเดียวกัน) แล้วส่งไปไว้ที่ `private/` นอก document root
+- สร้าง `.htaccess` ใน document root ที่มี `SetEnv FIS_ENV_FILE ...` ชี้ตำแหน่ง `.env` ให้ PHP รู้
 
-### 3. ไฟล์ `.env` บนเซิร์ฟเวอร์
-
-**สคริปต์ deploy ไม่ส่งไฟล์นี้ให้** ตั้งครั้งเดียวเองบนเซิร์ฟเวอร์
-
-⚠️ **ต้องวางนอก document root** — nginx เสิร์ฟไฟล์สแตติกเองโดยไม่ผ่าน Apache แปลว่า `.htaccess`
-กัน `.env` ไม่ได้ ถ้าวางไว้ใน document root ใครก็เปิด `https://fishing.yru.ac.th/.env` อ่านรหัสผ่านไปได้
-
-วางไว้เหนือ document root หนึ่งชั้น เช่น `/home/ผู้ใช้/fishing-config/.env` แล้วบอกตำแหน่งให้ PHP รู้
-ผ่านตัวแปร `FIS_ENV_FILE` (ตั้งใน Apache vhost หรือ `.htaccess` ด้วย `SetEnv`)
-
-ค่าที่ต้องมี — สังเกตว่า `DB_HOST` บนเซิร์ฟเวอร์เป็น `localhost` ไม่ใช่ชื่อโดเมน
-เพราะ PHP กับ MySQL อยู่เครื่องเดียวกัน ต่อผ่าน UNIX socket
-
-```
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=fishing_db
-DB_USER=fishing_db
-DB_PASSWORD=<รหัสผ่านจริง>
-```
-
-ตั้งสิทธิ์ไฟล์ให้อ่านได้เฉพาะเจ้าของ
-
-```bash
-chmod 600 ~/fishing-config/.env
-```
-
-## deploy
+## deploy ครั้งต่อ ๆ ไป
 
 ```bash
 bash ops/deploy.sh
 ```
 
-สคริปต์จะทำตามลำดับนี้ และ**หยุดทันทีถ้าขั้นใดล้ม**
+สคริปต์ทำตามลำดับนี้ และ**หยุดทันทีถ้าขั้นใดล้ม**
 
 1. ทดสอบในเครื่อง — `node --check`, ตรวจ id ของ DOM, ตรวจ HTML
-2. แสดงรายการไฟล์ที่จะส่งแล้วถามยืนยัน
-3. ส่ง `index.html`, `styles.css`, `app.js`, `api/` ผ่าน tar over SSH
-4. เรียก `/api/health.php` ตรวจว่าเซิร์ฟเวอร์ตอบ 200
+2. แสดงรายการไฟล์แล้วถามยืนยัน (พิมพ์ `yes`)
+3. ส่งไฟล์ผ่าน SFTP
+4. เรียก `/api/health.php` ตรวจว่าตอบ 200
 
 รายการไฟล์ประกาศไว้ตายตัวในสคริปต์ ไม่ได้กวาดทั้งโฟลเดอร์ — `.git`, `.env`, `tests/`, `scripts/`,
 `.github/` และไฟล์เอกสารจึงไม่มีทางหลุดขึ้น production
 
-## หลัง deploy สำเร็จ
+## ตรวจหลัง deploy
 
-ถอด IP ของเครื่อง dev ออกจาก Remote MySQL ของเซิร์ฟเวอร์ ตอนนี้ PHP ต่อฐานข้อมูลผ่าน localhost แล้ว
-ไม่จำเป็นต้องเปิดให้ต่อจากภายนอกอีก
+```bash
+curl -s https://fishing.yru.ac.th/api/health.php
+```
+
+ควรได้ `"ok":true` และ `"tables_found":8` ตรวจเรื่องความปลอดภัยด้วย — สองอันนี้ต้อง**ไม่ใช่** 200
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://fishing.yru.ac.th/.env
+```
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://fishing.yru.ac.th/api/lib/db.php
+```
 
 ## แก้ปัญหา
 
-| อาการ | สาเหตุที่พบบ่อย |
+| อาการ | สาเหตุ |
 |---|---|
-| health check ตอบ 503 พร้อม `ไม่พบ extension pdo_mysql` | ติดตั้งด้วย `sudo apt install php8.4-mysql` แล้วรีสตาร์ท Apache |
-| health check ตอบ 503 พร้อม `ต่อฐานข้อมูลไม่ได้` | `.env` บนเซิร์ฟเวอร์ผิด หรือ PHP หาไฟล์ไม่เจอ (ตรวจ `FIS_ENV_FILE`) |
-| `tables_found` ไม่ครบ 8 | ยังไม่ได้โหลด `data-model.sql` เข้าฐานข้อมูลนั้น |
-| ต่อ SSH ไม่ได้ | ไม่ได้อยู่ในเครือข่ายมหาวิทยาลัย เซิร์ฟเวอร์เป็น IP ภายใน 10.10.2.164 |
+| `This service allows sftp connections only` | ปกติ — บัญชีนี้ไม่มี shell ใช้ SFTP เท่านั้น |
+| SSH ขอรหัสผ่านทั้งที่ติดตั้งกุญแจแล้ว | สิทธิ์ไฟล์ผิด ต้อง `.ssh` = 700 และ `authorized_keys` = 600 |
+| health ตอบ 503 `ไม่พบ extension pdo_mysql` | `sudo apt install php8.4-mysql` แล้วรีสตาร์ท Apache |
+| health ตอบ 503 `ต่อฐานข้อมูลไม่ได้` | `.env` บนเซิร์ฟเวอร์ผิด หรือ `.htaccess` ไม่ได้ตั้ง `FIS_ENV_FILE` |
+| `tables_found` ไม่ครบ 8 | ยังไม่ได้โหลด `data-model.sql` เข้าฐานข้อมูล |
+| ต่อ SFTP ไม่ได้เลย | ไม่ได้อยู่ในเครือข่ายมหาวิทยาลัย |

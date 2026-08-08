@@ -1,22 +1,30 @@
 #!/usr/bin/env bash
 #
-# ส่งเว็บและ API ขึ้น fishing.yru.ac.th ผ่าน SSH
+# ส่งเว็บและ API ขึ้น fishing.yru.ac.th ผ่าน SFTP
 #
 #   ทดสอบในเครื่อง -> ส่งขึ้นเซิร์ฟเวอร์ -> ตรวจสุขภาพ
 #   ถ้าขั้นทดสอบไม่ผ่าน จะไม่ส่งอะไรขึ้นไปเลย
 #
+# บัญชีบนเซิร์ฟเวอร์เป็น sftp-only รันคำสั่งปลายทางไม่ได้ ทุกอย่างจึงทำผ่านการส่งไฟล์ล้วน ๆ
 # ค่าเชื่อมต่ออยู่นอก repo ที่ ~/.fishing-secrets/deploy.env (ดู deploy.env.example)
-# สคริปต์นี้ *ไม่* ส่งไฟล์ .env ขึ้นเซิร์ฟเวอร์ — ตั้งค่านั้นครั้งเดียวแยกต่างหาก ดู ops/README.md
 #
-# ใช้งาน:  bash ops/deploy.sh            ถามยืนยันก่อนส่ง
-#          bash ops/deploy.sh --yes      ไม่ถาม (สำหรับงานอัตโนมัติ)
+# ใช้งาน:  bash ops/deploy.sh              ส่งเฉพาะโค้ด
+#          bash ops/deploy.sh --setup      ส่งโค้ด + .env + .htaccess (ครั้งแรกครั้งเดียว)
+#          bash ops/deploy.sh --yes        ไม่ถามยืนยัน
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG="${FISHING_DEPLOY_CONFIG:-$HOME/.fishing-secrets/deploy.env}"
 ASSUME_YES=0
-[ "${1:-}" = "--yes" ] && ASSUME_YES=1
+DO_SETUP=0
+for arg in "$@"; do
+  case "$arg" in
+    --yes) ASSUME_YES=1 ;;
+    --setup) DO_SETUP=1 ;;
+    *) echo "ไม่รู้จักตัวเลือก: $arg" >&2; exit 2 ;;
+  esac
+done
 
 die() { echo "ล้มเหลว: $*" >&2; exit 1; }
 step() { echo; echo "=== $* ==="; }
@@ -28,12 +36,13 @@ set -a; . "$CONFIG"; set +a
 
 : "${DEPLOY_HOST:?ต้องตั้ง DEPLOY_HOST ใน $CONFIG}"
 : "${DEPLOY_USER:?ต้องตั้ง DEPLOY_USER ใน $CONFIG}"
-: "${DEPLOY_PATH:?ต้องตั้ง DEPLOY_PATH ใน $CONFIG}"
+: "${DEPLOY_DOCROOT:?ต้องตั้ง DEPLOY_DOCROOT ใน $CONFIG}"
+: "${DEPLOY_PRIVATE:?ต้องตั้ง DEPLOY_PRIVATE ใน $CONFIG}"
 HEALTH_URL="${HEALTH_URL:-https://${DEPLOY_HOST}/api/health.php}"
 
-SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
-[ -n "${DEPLOY_SSH_KEY:-}" ] && SSH_OPTS+=(-i "$DEPLOY_SSH_KEY")
-[ -n "${DEPLOY_PORT:-}" ] && SSH_OPTS+=(-p "$DEPLOY_PORT")
+SFTP_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o BatchMode=yes)
+[ -n "${DEPLOY_SSH_KEY:-}" ] && SFTP_OPTS+=(-i "$DEPLOY_SSH_KEY")
+[ -n "${DEPLOY_PORT:-}" ] && SFTP_OPTS+=(-P "$DEPLOY_PORT")
 TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
 
 # ---------- 2. ทดสอบก่อน ----------
@@ -45,53 +54,85 @@ node scripts/check-dom-ids.mjs
 npx --yes html-validate@9 index.html
 echo "ผ่านครบ"
 
-# ---------- 3. รายการไฟล์ที่จะส่ง ----------
-# ประกาศชัดเจนทีละรายการ ไม่ใช้การกวาดทั้งโฟลเดอร์
+# ---------- 3. รายการไฟล์ ----------
+# ประกาศชัดเจนทีละไฟล์ ไม่กวาดทั้งโฟลเดอร์
 # เพื่อไม่ให้ .git .env tests scripts หรือไฟล์เอกสารหลุดขึ้น production
-PAYLOAD=(index.html styles.css app.js api)
+ROOT_FILES=(index.html styles.css app.js)
+API_FILES=(api/spots.php api/gear.php api/health.php)
+LIB_FILES=(api/lib/config.php api/lib/db.php api/lib/http.php api/lib/.htaccess)
 
 step "ไฟล์ที่จะส่ง"
-for f in "${PAYLOAD[@]}"; do
-  [ -e "$f" ] || die "ไม่พบ $f"
+for f in "${ROOT_FILES[@]}" "${API_FILES[@]}" "${LIB_FILES[@]}"; do
+  [ -f "$f" ] || die "ไม่พบ $f"
   echo "  $f"
 done
-echo "ปลายทาง: ${TARGET}:${DEPLOY_PATH}"
+echo "ปลายทาง: ${TARGET}:${DEPLOY_DOCROOT}"
 
-# กันพลาดซ้ำอีกชั้น
-for f in "${PAYLOAD[@]}"; do
-  case "$f" in .env|.git|.git/*|tests|tests/*) die "รายการส่งมีไฟล์ต้องห้าม: $f" ;; esac
-done
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+BATCH="$WORK/batch.sftp"
 
-# ---------- 4. ยืนยัน ----------
+{
+  echo "-mkdir ${DEPLOY_DOCROOT}/api"
+  echo "-mkdir ${DEPLOY_DOCROOT}/api/lib"
+  for f in "${ROOT_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/$(basename "$f")"; done
+  for f in "${API_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/api/$(basename "$f")"; done
+  for f in "${LIB_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/api/lib/$(basename "$f")"; done
+} > "$BATCH"
+
+# ---------- 4. ไฟล์ตั้งค่าเซิร์ฟเวอร์ (เฉพาะ --setup) ----------
+if [ "$DO_SETUP" -eq 1 ]; then
+  step "เตรียมไฟล์ตั้งค่าสำหรับเซิร์ฟเวอร์"
+  [ -f "$REPO_ROOT/.env" ] || die "ไม่พบ .env ในโปรเจค — ต้องใช้ค่าฐานข้อมูลจากไฟล์นี้"
+
+  # บนเซิร์ฟเวอร์ PHP กับ MySQL อยู่เครื่องเดียวกัน ต่อผ่าน localhost ไม่ใช่ชื่อโดเมน
+  awk -F= '
+    /^[[:space:]]*(#|$)/ { next }
+    $1 ~ /^(DB_NAME|DB_USER|DB_PASSWORD|DB_PORT)$/ { print; next }
+  ' "$REPO_ROOT/.env" > "$WORK/server.env"
+  echo "DB_HOST=localhost" >> "$WORK/server.env"
+  grep -q "^DB_PASSWORD=." "$WORK/server.env" || die "ไม่พบ DB_PASSWORD ใน .env"
+  echo "  สร้าง .env สำหรับเซิร์ฟเวอร์แล้ว (DB_HOST=localhost)"
+
+  # บอก PHP ว่า .env อยู่นอก document root
+  cat > "$WORK/htaccess" <<HT
+# บอก API ว่าไฟล์ตั้งค่าอยู่ที่ไหน — ต้องอยู่นอก document root เสมอ
+SetEnv FIS_ENV_FILE ${DEPLOY_PRIVATE}/.env
+HT
+  echo "  สร้าง .htaccess ชี้ไป ${DEPLOY_PRIVATE}/.env"
+
+  {
+    echo "put $WORK/server.env ${DEPLOY_PRIVATE}/.env"
+    echo "chmod 600 ${DEPLOY_PRIVATE}/.env"
+    echo "put $WORK/htaccess ${DEPLOY_DOCROOT}/.htaccess"
+  } >> "$BATCH"
+fi
+
+# ---------- 5. ยืนยัน ----------
 if [ "$ASSUME_YES" -ne 1 ]; then
   echo
+  [ "$DO_SETUP" -eq 1 ] && echo "โหมด --setup: จะส่ง .env และ .htaccess ขึ้นไปด้วย"
   read -r -p "ส่งขึ้น production เลยไหม? พิมพ์ yes เพื่อยืนยัน: " reply
   [ "$reply" = "yes" ] || { echo "ยกเลิก"; exit 1; }
 fi
 
-# ---------- 5. ส่งขึ้นเซิร์ฟเวอร์ ----------
-step "ตรวจการเชื่อมต่อ"
-ssh "${SSH_OPTS[@]}" "$TARGET" "test -d '$DEPLOY_PATH'" \
-  || die "ต่อ SSH ไม่ได้ หรือไม่มีโฟลเดอร์ $DEPLOY_PATH บนเซิร์ฟเวอร์"
-echo "เชื่อมต่อได้ และพบโฟลเดอร์ปลายทาง"
-
-step "ส่งไฟล์"
-# tar ผ่าน ssh — เชื่อมต่อครั้งเดียว รักษาโครงสร้างโฟลเดอร์ ไม่ต้องใช้ rsync
-tar czf - "${PAYLOAD[@]}" \
-  | ssh "${SSH_OPTS[@]}" "$TARGET" "tar xzf - -C '$DEPLOY_PATH'"
+# ---------- 6. ส่งไฟล์ ----------
+step "ส่งไฟล์ผ่าน SFTP"
+sftp "${SFTP_OPTS[@]}" -b "$BATCH" "$TARGET" || die "ส่งไฟล์ไม่สำเร็จ"
 echo "ส่งเสร็จ"
 
-# ---------- 6. ตรวจสุขภาพ ----------
+# ---------- 7. ตรวจสุขภาพ ----------
 step "ตรวจสุขภาพหลัง deploy"
 sleep 2
-code=$(curl -s -o /tmp/fishing-health.json -w "%{http_code}" --max-time 30 "$HEALTH_URL" || echo 000)
+BODY="$WORK/health.json"
+code=$(curl -s -o "$BODY" -w "%{http_code}" --max-time 30 "$HEALTH_URL" || echo 000)
 echo "GET $HEALTH_URL -> $code"
-cat /tmp/fishing-health.json 2>/dev/null; echo
+cat "$BODY" 2>/dev/null; echo
 
 if [ "$code" != "200" ]; then
   echo
-  echo "health check ไม่ผ่าน — โค้ดขึ้นไปแล้วแต่ยังทำงานไม่ถูก" >&2
-  echo "จุดที่ควรดูก่อน: ไฟล์ .env บนเซิร์ฟเวอร์ หรือ extension pdo_mysql" >&2
+  echo "health check ไม่ผ่าน — ไฟล์ขึ้นไปแล้วแต่ยังทำงานไม่ถูก" >&2
+  echo "ดู ops/README.md หัวข้อแก้ปัญหา" >&2
   exit 1
 fi
 
