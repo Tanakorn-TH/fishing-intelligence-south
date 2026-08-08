@@ -59,8 +59,16 @@
             <div id="scoreBody" hidden>
               <div class="score-orbit"><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="82"/><circle class="progress" id="scoreRing" cx="100" cy="100" r="82"/></svg><div class="score-number"><b id="scoreValue">—</b><span>/100</span><small id="scoreLabel">—</small></div></div>
               <p class="score-foot" id="scoreBest">—</p>
+              <p class="score-custom" id="scoreCustom" hidden></p>
               <p class="score-safety" id="scoreSafety" hidden></p>
               <div id="scoreDetail" hidden>
+                <div class="style-tools">
+                  <p class="style-hint" id="styleHint">ลำดับบนสุดถ่วงน้ำหนักมากที่สุด · ปิดสวิตช์เพื่อไม่นำงานนั้นมาคิด</p>
+                  <div class="style-actions">
+                    <button type="button" class="style-tool press" id="styleSort">เรียงตามคะแนน</button>
+                    <button type="button" class="style-tool press" id="styleReset">ค่าเริ่มต้น</button>
+                  </div>
+                </div>
                 <ul class="style-list" id="styleList"></ul>
                 <p class="datum-note" id="scoreNotice"></p>
               </div>
