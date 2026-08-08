@@ -784,7 +784,7 @@ async function openPlacePicker() {
     spotMap.reset();
 
     try {
-      const response = await fetch('map/coastline-south.json');
+      const response = await fetch(`map/coastline-south.json?v=${APP_VERSION}`);
       if (response.ok) spotMap.setCoastline(await response.json());
     } catch (error) {
       /* ไม่มีชายฝั่งก็ยังเลือกจากรายการได้ แผนที่แค่ว่างเปล่า */
@@ -792,7 +792,7 @@ async function openPlacePicker() {
 
     // เส้นความลึกเป็นของแถม โหลดไม่ได้ก็ยังเลือกหมายได้ตามปกติ
     try {
-      const response = await fetch('map/depth-south.json');
+      const response = await fetch(`map/depth-south.json?v=${APP_VERSION}`);
       if (response.ok) {
         const depth = await response.json();
         spotMap.setDepth(depth);
