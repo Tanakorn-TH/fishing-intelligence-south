@@ -59,7 +59,7 @@ echo "ผ่านครบ"
 # เพื่อไม่ให้ .git .env tests scripts หรือไฟล์เอกสารหลุดขึ้น production
 ROOT_FILES=(index.html styles.css design.css fonts.css app.js map.js)
 # ข้อมูลเส้นชายฝั่งสำหรับแผนที่เลือกหมาย สร้างด้วย scripts/build-coastline.mjs
-MAP_FILES=(map/coastline-south.json)
+MAP_FILES=(map/coastline-south.json map/depth-south.json)
 API_FILES=(
   api/spots.php api/gear.php api/health.php
   api/weather.php api/solunar.php api/tides.php api/score.php api/places.php

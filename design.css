@@ -622,6 +622,40 @@ body {
   cursor: pointer;
 }
 
+/* คำอธิบายเส้นความลึก อยู่บนแผนที่เพื่อให้ติดไปกับภาพเวลาแคปหน้าจอ */
+.depth-legend {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(245, 240, 228, .92);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #3c5a70;
+}
+
+.depth-legend[hidden] { display: none; }
+
+.depth-key {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ขีดสั้นเป็นเส้นประ ให้ตรงกับที่วาดบนแผนที่จริง
+   ถ้าคำอธิบายเป็นเส้นทึบแต่แผนที่เป็นเส้นประ ผู้ใช้จะไม่เชื่อมโยงกัน */
+.depth-key i {
+  display: block;
+  width: 13px;
+  border-top: 1.5px dashed currentColor;
+}
+
+.depth-unit { color: #6b8a9c; }
+
 /* คำเตือนอยู่บนตัวแผนที่เอง ไม่ใช่ใต้แผนที่ เพราะคนแคปหน้าจอส่งต่อกัน
    ถ้าคำเตือนอยู่นอกกรอบภาพ มันจะหลุดหายไปพร้อมกับบริบท */
 .map-note {

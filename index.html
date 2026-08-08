@@ -186,10 +186,12 @@
         <svg class="spot-map" id="spotMap" role="img" aria-labelledby="spotMapDesc" preserveAspectRatio="xMidYMid slice">
           <title id="spotMapDesc">แผนที่ภาคใต้แสดงจุดที่เลือกดูสภาพอากาศได้</title>
           <g id="mapLand"></g>
+          <g id="mapDepth"></g>
           <g id="mapPins"></g>
         </svg>
         <button type="button" class="map-reset press" id="mapReset">ดูทั้งภาค</button>
-        <p class="map-note">แผนที่นี้ใช้เลือกจุดเท่านั้น <b>ไม่ใช่แผนที่เดินเรือ</b></p>
+        <div class="depth-legend" id="depthLegend" hidden></div>
+        <p class="map-note">เส้นประ = ความลึกโดยประมาณ <b>ไม่ใช่แผนที่เดินเรือ</b></p>
       </div>
 
       <div class="state-slot" id="placeState"></div>

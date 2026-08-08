@@ -760,6 +760,26 @@ function requestGps({ silent = false } = {}) {
   );
 }
 
+/* คำอธิบายเส้นความลึก — สร้างจากข้อมูลจริงที่โหลดมา ไม่ได้เขียนตัวเลขตายตัวไว้
+   ถ้าวันหนึ่งเปลี่ยนระดับความลึกที่วาด คำอธิบายจะเปลี่ยนตามเอง ไม่หลุดจากกัน */
+function renderDepthLegend(depth) {
+  const legend = document.getElementById('depthLegend');
+  const levels = (depth.features || [])
+    .map((feature) => feature.properties.depth_m)
+    .filter(isFiniteNumber)
+    .sort((a, b) => a - b);
+
+  if (!levels.length) {
+    legend.hidden = true;
+    return;
+  }
+
+  legend.hidden = false;
+  legend.innerHTML = levels.map((metres) =>
+    `<span class="depth-key"><i style="border-top-color:${escapeHtml(DEPTH_COLORS[metres] || '#2b6291')}"></i>${metres}</span>`
+  ).join('') + '<span class="depth-unit">เมตร</span>';
+}
+
 /* ── การเปิด-ปิดแผงและการโต้ตอบ ───────────────────────────────────────── */
 
 async function openPlacePicker() {
@@ -776,6 +796,18 @@ async function openPlacePicker() {
       if (response.ok) spotMap.setCoastline(await response.json());
     } catch (error) {
       /* ไม่มีชายฝั่งก็ยังเลือกจากรายการได้ แผนที่แค่ว่างเปล่า */
+    }
+
+    // เส้นความลึกเป็นของแถม โหลดไม่ได้ก็ยังเลือกหมายได้ตามปกติ
+    try {
+      const response = await fetch('map/depth-south.json');
+      if (response.ok) {
+        const depth = await response.json();
+        spotMap.setDepth(depth);
+        renderDepthLegend(depth);
+      }
+    } catch (error) {
+      /* ไม่มีเส้นความลึกก็ไม่เป็นไร แผนที่ยังใช้เลือกจุดได้ */
     }
     if (activeLocation.isGps) spotMap.setOrigin({ lat: activeLocation.lat, lon: activeLocation.lon });
   }

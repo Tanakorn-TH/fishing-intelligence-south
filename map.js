@@ -21,6 +21,17 @@ const MAP_COLORS = {
   label: '#7a3419',
 };
 
+/* สีเส้นความลึก ผ่านการตรวจ contrast บนพื้นครีมมาแล้ว 3.34:1 ถึง 12.96:1
+   ไล่เข้มตามความลึก ซึ่งเป็นสัญชาตญาณที่คนทั่วไปเข้าใจตรงกัน */
+const DEPTH_COLORS = {
+  10: '#4a89b4',
+  20: '#3a77a6',
+  30: '#2b6291',
+  50: '#1f4d75',
+  100: '#163a57',
+  200: '#102a3f',
+};
+
 /* กรอบเริ่มต้น = ภาคใต้ทั้งภาค ผู้ใช้ค่อยซูมเข้าหาที่ของตัวเอง */
 const MAP_HOME = { west: 96.0, east: 103.5, south: 4.5, north: 12.5 };
 
@@ -58,6 +69,7 @@ class SpotMap {
   constructor(svg) {
     this.svg = svg;
     this.coast = null;
+    this.depth = null;
     this.places = [];
     this.selectedId = null;
     this.origin = null;      // ตำแหน่งผู้ใช้ ถ้ามี
@@ -79,6 +91,7 @@ class SpotMap {
     // เส้นและหมุดต้องคงขนาดที่ตาเห็นไว้ ไม่ว่าจะซูมเท่าไหร่
     // จึงคำนวณขนาดกลับตามอัตราส่วนของ viewBox ทุกครั้งที่มุมมองเปลี่ยน
     this.svg.style.setProperty('--map-scale', String(w / this.view0w));
+    this.renderDepth();
     this.renderPins();
   }
 
@@ -201,6 +214,42 @@ class SpotMap {
   setCoastline(geojson) {
     this.coast = geojson;
     this.renderLand();
+  }
+
+  /**
+   * เส้นความลึก
+   *
+   * ⚠️ ต้องวาดเป็นเส้นประเสมอ ห้ามเปลี่ยนเป็นเส้นทึบ
+   * ตามสัญลักษณ์มาตรฐาน IHO เส้นทึบแปลว่า "สำรวจมาแล้ว" ส่วนเส้นประแปลว่า "ประมาณ"
+   * ข้อมูลชุดนี้ความละเอียด 1.85 กม. ไม่มีหินโสโครก ไม่มีร่องน้ำ
+   * คนที่อ่านแผนที่เดินเรือเป็นจะเข้าใจจากรูปแบบเส้นทันทีโดยไม่ต้องอ่านคำเตือน
+   */
+  setDepth(geojson) {
+    this.depth = geojson;
+    this.renderDepth();
+  }
+
+  renderDepth() {
+    const layer = this.svg.querySelector('#mapDepth');
+    if (!layer || !this.depth) return;
+
+    // ความหนาและระยะประคงที่ในสายตา จึงต้องหารด้วยอัตราซูมปัจจุบัน
+    const scale = this.view.w / this.view0w;
+    const width = 0.011 * scale;
+    const dash = `${0.055 * scale} ${0.04 * scale}`;
+
+    layer.innerHTML = this.depth.features.map((feature) => {
+      const depth = feature.properties.depth_m;
+      const color = DEPTH_COLORS[depth] || '#2b6291';
+      const d = feature.geometry.coordinates.map((line) => {
+        const points = line.map(([lon, lat]) =>
+          `${mapProjectX(lon).toFixed(4)},${mapProjectY(lat).toFixed(4)}`);
+        return `M${points.join('L')}`;
+      }).join('');
+
+      return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}"`
+        + ` stroke-dasharray="${dash}" stroke-linecap="round" />`;
+    }).join('');
   }
 
   setPlaces(places) {
