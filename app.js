@@ -129,7 +129,7 @@ function buildCalendar() {
   DAY_SCORES.forEach((score, index) => {
     const day = index + 1;
     const today = isCurrentMonth && now.getDate() === day ? ' today' : '';
-    markup.push(`<button class="day liquid ${scoreTier(score)}${today}" data-day="${day}"><b>${day}</b><span>${score}</span></button>`);
+    markup.push(`<button class="day press ${scoreTier(score)}${today}" data-day="${day}"><b>${day}</b><span>${score}</span></button>`);
   });
 
   calendarGrid.innerHTML = markup.join('');
