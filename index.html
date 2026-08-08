@@ -53,10 +53,18 @@
             <p class="hero-sub" id="heroSub">กำลังดึงสภาพอากาศทะเลและช่วง Solunar ของวันนี้…</p>
             <div class="major-window" id="majorWindow"><span class="pulse"></span><div><small>MAJOR TIME</small><b id="majorWindowValue">กำลังโหลด…</b></div><span class="window-arrow">↗</span></div>
           </div>
-          <article class="score-card glass glass-raised spot rise is-sample" style="--i:1" aria-labelledby="scoreHeading">
-            <div class="score-top"><span id="scoreHeading">FISHING SCORE</span><span class="sample-badge"><span aria-hidden="true">▲</span> ข้อมูลตัวอย่าง</span></div>
-            <div class="score-orbit sample-veil"><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="82"/><circle class="progress" cx="100" cy="100" r="82"/></svg><div class="score-number"><b>82</b><span>/100</span><small>ดีมาก</small></div></div>
-            <p class="sample-note">ยังไม่มีสูตรคะแนนที่อธิบายที่มาได้ ตัวเลขนี้เป็นตัวอย่างสำหรับดูหน้าตาเท่านั้น <b>ห้ามใช้วางแผนออกทะเล</b></p>
+          <article class="score-card glass glass-raised spot rise" style="--i:1" aria-labelledby="scoreHeading">
+            <div class="score-top"><span id="scoreHeading">FISHING SCORE</span><button type="button" class="score-info press" id="scoreInfo" aria-expanded="false" aria-controls="scoreDetail">ที่มา</button></div>
+            <div class="state-slot" id="scoreState"></div>
+            <div id="scoreBody" hidden>
+              <div class="score-orbit"><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="82"/><circle class="progress" id="scoreRing" cx="100" cy="100" r="82"/></svg><div class="score-number"><b id="scoreValue">—</b><span>/100</span><small id="scoreLabel">—</small></div></div>
+              <p class="score-foot" id="scoreBest">—</p>
+              <p class="score-safety" id="scoreSafety" hidden></p>
+              <div id="scoreDetail" hidden>
+                <ul class="style-list" id="styleList"></ul>
+                <p class="datum-note" id="scoreNotice"></p>
+              </div>
+            </div>
           </article>
         </section>
 

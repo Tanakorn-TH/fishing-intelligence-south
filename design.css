@@ -503,6 +503,109 @@ body {
     rgba(255, 255, 255, .06) 0 5px, transparent 5px 13px);
 }
 
+/* ═══ Fishing Score ════════════════════════════════════════════════════
+   คะแนนมาจากน้ำหนักที่ทีมเลือกเอง (ดู docs/fishing-score.md)
+   ปุ่ม "ที่มา" จึงไม่ใช่ของตกแต่ง แต่เป็นเงื่อนไขที่ทำให้ตัวเลขนี้แสดงได้ตามกติกา */
+.score-info {
+  border: 1px solid var(--glass-line);
+  background: rgba(255, 255, 255, .06);
+  color: #9dced0;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: .6px;
+  cursor: pointer;
+}
+
+.score-info:hover { color: #d8f5f3; }
+
+/* วงแหวนเดินตามคะแนนจริง จึงต้องเปลี่ยนแบบนุ่ม ไม่ใช่กระโดด */
+.score-orbit .progress { transition: stroke-dashoffset .6s ease; }
+
+/* บรรทัดความปลอดภัย — แยกจากคะแนนโดยเจตนา
+   คะแนน 70 กับ "ลมแรงเกินไปสำหรับเรือเล็ก" เป็นคนละคำถาม และคำถามหลังสำคัญกว่า
+   จึงใช้สีเตือนของตัวเองได้ ไม่ต้องกลมกลืนกับการ์ด */
+.score-safety {
+  margin: 10px 0 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-line);
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.score-safety[hidden] { display: none; }
+
+.score-safety.is-safe { color: #b8d9c4; }
+
+@supports (color: color-mix(in srgb, white 10%, transparent)) {
+  .score-safety.is-caution {
+    color: var(--orange);
+    border-color: color-mix(in srgb, var(--orange) 45%, transparent);
+    background-color: color-mix(in srgb, var(--orange) 12%, transparent);
+  }
+  /* ระดับอันตรายต้องเห็นชัดกว่าทุกอย่างในการ์ด รวมทั้งตัวเลขคะแนนเอง */
+  .score-safety.is-danger {
+    color: #ffd9d0;
+    border-color: color-mix(in srgb, var(--orange) 85%, #ff6b4a);
+    background-color: color-mix(in srgb, var(--orange) 26%, transparent);
+    font-weight: 700;
+  }
+}
+
+/* รายการคะแนนแยกตามงานตกปลา */
+.style-list {
+  list-style: none;
+  margin: 13px 0 0;
+  padding: 13px 0 0;
+  border-top: 1px solid var(--glass-line);
+  display: grid;
+  gap: 7px;
+}
+
+.style-row {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.style-score {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  text-align: right;
+  color: #e8f7f5;
+}
+
+.style-copy { min-width: 0; }
+.style-copy b { font-size: 11.5px; display: block; }
+
+.style-copy small,
+.style-copy em {
+  display: block;
+  font-size: 9px;
+  font-style: normal;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* บรรทัดปัจจัย = ที่มาของคะแนนงานนั้น จางกว่าชื่องานแต่ยังอ่านออก */
+.style-copy em {
+  font-family: var(--font-mono);
+  opacity: .75;
+  margin-top: 1px;
+}
+
+.style-label {
+  font-size: 9.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 /* ═══ ป้ายบอก datum ของระดับน้ำ ════════════════════════════════════════
    คนละความหมายกับ .sample-badge — ตรงนี้ "เป็นข้อมูลจริง" แต่วัดจากฐานคนละอันกับ
    ตารางน้ำของกรมอุทกศาสตร์ ผู้ใช้จึงต้องรู้ก่อนเอาตัวเลขไปเทียบ

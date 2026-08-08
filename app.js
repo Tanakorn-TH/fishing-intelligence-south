@@ -1,10 +1,11 @@
 /* คลื่นดี — Fishing Intelligence South
    หน้าเว็บดึงข้อมูลจริงจาก api/ ตาม docs/api-contract.md
-   ส่วนที่ยังไม่มี backend (คะแนน ปฏิทินคะแนน) ยังเป็นชุดตัวอย่าง
+   ส่วนที่ยังไม่มี backend (ปฏิทินคะแนนรายเดือน) ยังเป็นชุดตัวอย่าง
    และถูกติดป้าย "ข้อมูลตัวอย่าง" ไว้ใน index.html ทุกจุด — ห้ามถอดป้ายออกจนกว่าจะมีข้อมูลจริง
 
-   น้ำขึ้นน้ำลงเป็นข้อมูลจริงแล้ว แต่มีเงื่อนไขเรื่อง datum ที่ต้องบอกผู้ใช้เสมอ
-   ดูคำอธิบายเหนือ loadTides() ก่อนแก้ส่วนนั้น */
+   สองส่วนนี้เป็นข้อมูลจริงแล้ว แต่มีเงื่อนไขที่ต้องบอกผู้ใช้เสมอ อ่านก่อนแก้:
+   - น้ำขึ้นน้ำลง: อ้างอิง datum คนละฐานกับตารางน้ำทางการ (ดูคำอธิบายเหนือ loadTides)
+   - Fishing Score: น้ำหนักทีมเลือกเอง ไม่ได้ปรับจากสถิติการจับปลาจริง (ดูเหนือ loadScore) */
 
 /* เลขเวอร์ชัน — ที่นี่ที่เดียวเป็นแหล่งความจริง
    ปล่อยรุ่น = แก้เลขนี้ + สร้าง git tag ชื่อเดียวกัน (vX.Y.Z) แล้ว push tags
@@ -513,6 +514,110 @@ async function loadSolunar() {
 }
 retryActions.solunar = loadSolunar;
 
+/* ═══ Fishing Score — GET /api/score.php ═══════════════════════════════
+   คะแนนนี้มาจากน้ำหนักที่ทีมเลือกเอง ไม่ได้ปรับจากสถิติการจับปลาจริง
+   ที่มาทั้งหมดอยู่ใน docs/fishing-score.md และ API ส่ง breakdown รายปัจจัยมาให้
+   จึงต้องเปิดให้ผู้ใช้กดดูได้เสมอ — ตัวเลขที่กดดูที่มาไม่ได้คือตัวเลขที่เชื่อไม่ได้ */
+
+/* เส้นรอบวงของวงกลมรัศมี 82 ใน viewBox 200x200 — ต้องตรงกับ stroke-dasharray ใน styles.css */
+const SCORE_RING_CIRCUMFERENCE = 515;
+
+function safetyToneClass(level) {
+  if (level === 'dangerous') return 'is-danger';
+  if (level === 'caution') return 'is-caution';
+  return 'is-safe';
+}
+
+function styleRowMarkup(style) {
+  /* แสดงแค่ 3 ปัจจัยแรก เพราะ API เรียงตามแต้มที่ได้จริงมาแล้ว
+     ผู้ใช้จึงเห็นตัวชี้ขาดของงานนั้นทันทีโดยไม่ต้องอ่านทั้งหมด */
+  const top = (style.breakdown || []).slice(0, 3)
+    .map((row) => `${escapeHtml(row.label)} ${Math.round(row.contribution)}`)
+    .join(' · ');
+
+  return '<li class="style-row">'
+    + `<span class="style-score">${escapeHtml(String(style.score))}</span>`
+    + '<span class="style-copy">'
+    + `<b>${escapeHtml(style.name_th)}</b>`
+    + `<small>${escapeHtml(style.tagline || '')}</small>`
+    + (top ? `<em>${escapeHtml(top)}</em>` : '')
+    + '</span>'
+    + `<span class="style-label">${escapeHtml(style.label)}</span>`
+    + '</li>';
+}
+
+function renderScore(payload) {
+  const data = payload.data || {};
+  const overall = data.overall || {};
+  const styles = Array.isArray(data.styles) ? data.styles : [];
+  const safety = data.safety || null;
+
+  renderState(document.getElementById('scoreState'), null);
+  document.getElementById('scoreBody').hidden = false;
+
+  const score = isFiniteNumber(overall.score) ? overall.score : 0;
+  document.getElementById('scoreValue').textContent = String(score);
+  document.getElementById('scoreLabel').textContent = overall.label || '—';
+
+  /* วงแหวนเดินตามคะแนนจริง — dashoffset มาก = วงว่างมาก */
+  const ring = document.getElementById('scoreRing');
+  const offset = SCORE_RING_CIRCUMFERENCE * (1 - Math.min(100, Math.max(0, score)) / 100);
+  ring.style.strokeDashoffset = String(Math.round(offset));
+
+  const best = styles.length ? styles[0] : null;
+  document.getElementById('scoreBest').textContent = best
+    ? `วันนี้เด่นที่ ${best.name_th} ${best.score}/100`
+    : 'ยังไม่มีคะแนนของงานใดเลย';
+
+  /* ความปลอดภัยแยกจากคะแนนโดยเจตนา คะแนนสูงต้องไม่กลบคำเตือนว่าทะเลอันตราย */
+  const safetyEl = document.getElementById('scoreSafety');
+  if (safety && safety.label) {
+    safetyEl.hidden = false;
+    safetyEl.className = `score-safety ${safetyToneClass(safety.level)}`;
+    const reasons = Array.isArray(safety.reasons) ? safety.reasons.join(' · ') : '';
+    safetyEl.textContent = `${safety.label}${reasons ? ` — ${reasons}` : ''}`;
+  } else {
+    safetyEl.hidden = true;
+  }
+
+  document.getElementById('styleList').innerHTML = styles.map(styleRowMarkup).join('');
+  document.getElementById('scoreNotice').textContent = data.notice || '';
+}
+
+async function loadScore() {
+  const slot = document.getElementById('scoreState');
+  document.getElementById('scoreBody').hidden = true;
+  renderState(slot, { kind: 'loading', title: 'กำลังคิดคะแนนของวันนี้…' });
+
+  try {
+    const payload = await fetchJson('api/score.php', {
+      lat: activeLocation.lat,
+      lon: activeLocation.lon,
+      date: isoDate(new Date()),
+    });
+    renderScore(payload);
+  } catch (error) {
+    document.getElementById('scoreBody').hidden = true;
+    renderState(slot, {
+      kind: error.status === 400 ? 'empty' : 'error',
+      title: 'ยังคิดคะแนนให้ไม่ได้',
+      detail: error.message,
+      retry: 'score',
+    });
+  }
+}
+retryActions.score = loadScore;
+
+/* ปุ่ม "ที่มา" — พับรายละเอียดไว้ก่อนเพื่อไม่ให้การ์ดยาวเกิน แต่ต้องกดดูได้เสมอ */
+document.getElementById('scoreInfo').addEventListener('click', () => {
+  const detail = document.getElementById('scoreDetail');
+  const button = document.getElementById('scoreInfo');
+  const opening = detail.hidden;
+  detail.hidden = !opening;
+  button.setAttribute('aria-expanded', opening ? 'true' : 'false');
+  button.textContent = opening ? 'ซ่อน' : 'ที่มา';
+});
+
 /* ═══ น้ำขึ้นน้ำลง — GET /api/tides.php ════════════════════════════════
    ⚠️ ค่าที่ได้อ้างอิงระดับน้ำทะเลปานกลาง (MSL) ไม่ใช่ระดับน้ำลงต่ำสุดแบบตารางน้ำทางการ
    ตัวเลขความลึกจึงเทียบกับตารางของกรมอุทกศาสตร์ไม่ได้ สิ่งที่ใช้ได้คือ "จังหวะ" น้ำขึ้นน้ำลง
@@ -798,6 +903,7 @@ function selectSpot(spotId, refresh = true) {
   loadWeather();
   loadSolunar();
   loadTides();
+  loadScore();
 
   if (spot.depth && isFiniteNumber(spot.depth.typical_m)) {
     document.getElementById('gearDepth').value = String(roundTo(spot.depth.typical_m, 1));
@@ -1074,5 +1180,6 @@ if (window.matchMedia('(pointer: fine)').matches
 loadWeather();
 loadSolunar();
 loadTides();
+loadScore();
 loadSpots();
 loadGear();
