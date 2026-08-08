@@ -48,6 +48,7 @@ fishing-intelligence-south/
 │   ├── gear.php          # GET กติกาแนะนำอุปกรณ์ตาม style + depth
 │   └── lib/              # config, PDO, JSON helper (ห้ามเรียกตรงจากเว็บ)
 ├── tests/                # ชุดทดสอบ API ที่ CI รัน
+├── ops/                  # การนำขึ้นระบบจริง — deploy.sh และวิธีตั้งค่า
 ├── scripts/
 │   └── check-dom-ids.mjs # ตรวจว่า id ที่ app.js เรียกหา มีจริงใน index.html
 ├── .htmlvalidate.json    # ชุดกฎตรวจ HTML
