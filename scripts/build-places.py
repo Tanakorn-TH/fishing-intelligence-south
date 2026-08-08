@@ -40,8 +40,32 @@ EXTRA_PLACES = [
     ("เกาะพีพี", "กระบี่"),
     ("อ่าวนาง", "กระบี่"),
     ("เกาะหลีเป๊ะ", "สตูล"),
-    ("หาดใหญ่", "สงขลา"),
 ]
+
+# ---------------------------------------------------------------------------
+# กรองให้เหลือเฉพาะที่ที่มีน้ำให้ตกปลา
+#
+# แอปนี้แสดงสภาพทะเล น้ำขึ้นน้ำลง และคลื่น อำเภอที่อยู่กลางแผ่นดินจึงไม่มีอะไรให้ดู
+# และแย่กว่านั้นคือหลอกผู้ใช้ว่ามีข้อมูลให้ ทั้งที่ endpoint น้ำจะตอบว่าไม่มีข้อมูล
+#
+# ใช้ระยะห่างจากเส้นชายฝั่งจริงเป็นเกณฑ์ (map/coastline-south.json)
+# ไม่ใช่การเดา แต่วัดจากข้อมูลภูมิศาสตร์ที่มีอยู่แล้ว
+# ---------------------------------------------------------------------------
+
+COASTLINE = os.path.join(REPO, "map", "coastline-south.json")
+
+# อำเภอที่ห่างชายฝั่งเกินนี้ถือว่าไม่ใช่อำเภอชายทะเล
+# 15 กม. คือระยะที่ตัวอำเภอยังอยู่ในเขตอิทธิพลของทะเล
+# กว้างกว่านี้จะเริ่มติดอำเภอกลางแผ่นดิน แคบกว่านี้จะตัดอำเภอชายทะเลจริงบางแห่งทิ้ง
+COAST_MAX_KM = 15.0
+
+# ตัวจังหวัดเก็บไว้เสมอแม้ตัวเมืองจะอยู่ลึก เพราะเป็นจุดตั้งต้นที่คนใช้ค้นหาจังหวัดตัวเอง
+# เช่นตัวเมืองตรังอยู่ลึกเข้าไป 20 กม. ถ้าตัดทิ้ง คนตรังจะหาจังหวัดตัวเองไม่เจอเลย
+KEEP_ALL_PROVINCE_SEATS = True
+
+# จังหวัดที่เก็บทุกอำเภอแม้ไม่ติดทะเล
+# ยะลาไม่มีชายฝั่งเลย แต่มีแหล่งน้ำจืดขนาดใหญ่ที่คนไปตกปลาจริง
+KEEP_WHOLE_PROVINCES = {"ยะลา"}
 
 LAT_MIN, LAT_MAX = 5.4, 11.5
 LON_MIN, LON_MAX = 97.0, 102.5
@@ -178,10 +202,102 @@ def collect():
     return {"places": rows, "missed": missed}
 
 
+def coastline_points():
+    """จุดบนเส้นชายฝั่งทั้งหมด ใช้วัดว่าสถานที่หนึ่งอยู่ห่างทะเลแค่ไหน"""
+    if not os.path.exists(COASTLINE):
+        raise SystemExit(
+            "ไม่พบ %s — รัน scripts/build-coastline.mjs ก่อน\n"
+            "ชุดข้อมูลสถานที่ต้องใช้เส้นชายฝั่งเพื่อคัดจุดที่ไม่มีน้ำออก" % COASTLINE
+        )
+    with open(COASTLINE, encoding="utf-8") as f:
+        geo = json.load(f)
+    points = []
+    for feature in geo["features"]:
+        for ring in feature["geometry"]["coordinates"]:
+            points.extend(ring)
+    return points
+
+
+def km_to_coast(lat, lon, points):
+    best = float("inf")
+    for lon2, lat2 in points:
+        d = haversine(lat, lon, lat2, lon2)
+        if d < best:
+            best = d
+    return best
+
+
+def has_marine_data(lat, lon):
+    """แบบจำลองทะเลครอบคลุมจุดนี้ไหม
+
+    เกณฑ์ชี้ขาดจริง ๆ ของแอปนี้ ไม่ใช่แค่ใกล้น้ำในเชิงภูมิศาสตร์
+    ถ้าแบบจำลองไม่มีข้อมูล หน้าน้ำขึ้นน้ำลงกับคลื่นจะว่างเปล่า
+    การใส่จุดนั้นไว้ให้เลือกคือการหลอกผู้ใช้ว่ามีอะไรให้ดู
+
+    จำเป็นต้องเช็คแยกจากระยะห่างชายฝั่ง เพราะเส้นชายฝั่งของเรารวมทะเลสาบสงขลาด้วย
+    หาดใหญ่จึงดู "ใกล้ชายฝั่ง" ทั้งที่แบบจำลองทะเลไม่มีข้อมูลให้เลย
+    """
+    url = ("https://marine-api.open-meteo.com/v1/marine?latitude=%.4f&longitude=%.4f"
+           "&hourly=sea_level_height_msl&forecast_days=1" % (lat, lon))
+    try:
+        data = json.load(urllib.request.urlopen(url, timeout=20))
+    except Exception:
+        # ปลายทางล้มชั่วคราว — ไม่ตัดจุดทิ้งเพราะเหตุนี้ ให้ผ่านไปก่อน
+        return True
+    values = (data.get("hourly") or {}).get("sea_level_height_msl") or []
+    return any(v is not None for v in values)
+
+
+def keep_place(place, points):
+    """ตัดสินว่าจุดนี้มีน้ำให้ตกปลาไหม คืน (เก็บไหม, เหตุผล, ระยะห่างทะเล)"""
+    distance = km_to_coast(place["lat"], place["lon"], points)
+
+    coast = COAST_BY_PROVINCE.get(place["province_plain"], "")
+
+    # ยะลาไม่มีชายฝั่งและแบบจำลองทะเลไม่ครอบคลุม แต่ตกลงกันว่าเก็บไว้
+    # เพราะมีแหล่งน้ำจืดขนาดใหญ่ที่คนไปตกปลาจริง
+    # ผลคือหน้าน้ำขึ้นน้ำลงของจุดเหล่านี้จะไม่มีข้อมูล ซึ่งเป็นการแลกที่ตั้งใจ
+    if place["province_plain"] in KEEP_WHOLE_PROVINCES:
+        return True, "ทั้งจังหวัด (มีแหล่งน้ำจืด)", distance
+
+    # ตัวจังหวัดเก็บไว้เสมอ ไม่ผ่านด่านไหนทั้งนั้น
+    # เพราะเป็นจุดตั้งต้นที่คนใช้หาจังหวัดตัวเอง ถ้าหายไปคือทั้งจังหวัดหายจากแอป
+    if KEEP_ALL_PROVINCE_SEATS and place["kind"] == "province":
+        return True, "ตัวจังหวัด", distance
+
+    if distance > COAST_MAX_KM:
+        return False, "กลางแผ่นดิน", distance
+
+    # จังหวัดริมทะเลสาบข้ามด่านแบบจำลองทะเลไป
+    # แบบจำลองครอบคลุมเฉพาะทะเลเปิด ไม่ครอบคลุมทะเลสาบสงขลา
+    # แต่ทะเลสาบเป็นแหล่งน้ำที่คนตกปลาจริง จะตัดทิ้งเพราะแบบจำลองไม่รู้จักไม่ได้
+    if coast == "lake":
+        return True, "ริมทะเลสาบ", distance
+
+    # ที่เหลือต้องผ่านด่านที่สำคัญที่สุด: แอปให้ข้อมูลทะเลที่จุดนั้นได้จริงไหม
+    ok = has_marine_data(place["lat"], place["lon"])
+    time.sleep(0.3)
+    if not ok:
+        return False, "ไม่มีข้อมูลทะเล", distance
+
+    return True, "ชายทะเล", distance
+
+
 def emit(data):
-    places = data["places"]
+    points = coastline_points()
+
+    kept, dropped = [], []
+    for place in data["places"]:
+        ok, reason, distance = keep_place(place, points)
+        place["coast_km"] = round(distance, 1)
+        place["keep_reason"] = reason
+        (kept if ok else dropped).append(place)
+
+    places = kept
     for p in places:
         p["coast"] = COAST_BY_PROVINCE.get(p["province_plain"], "")
+
+    data["dropped"] = dropped
 
     order = {"province": 0, "district": 1, "landmark": 2}
     places.sort(key=lambda p: (p["province_plain"], order.get(p["kind"], 3), p["name"]))
@@ -258,13 +374,18 @@ def emit(data):
         counts[p["coast"] or "(ไม่ระบุ)"] = counts.get(p["coast"] or "(ไม่ระบุ)", 0) + 1
     provinces = len({p["province_plain"] for p in places})
 
+    reasons = {}
+    for p in places:
+        reasons[p["keep_reason"]] = reasons.get(p["keep_reason"], 0) + 1
+
     print("wrote %s" % OUT)
     print("  %d places across %d provinces" % (len(places), provinces))
     print("  by coast: %s" % ", ".join("%s=%d" % kv for kv in sorted(counts.items())))
+    print("  kept because: %s" % ", ".join("%s=%d" % kv for kv in sorted(reasons.items())))
+    print("  dropped %d inland places (เกิน %.0f กม. จากชายฝั่ง)"
+          % (len(data.get("dropped", [])), COAST_MAX_KM))
     if data["missed"]:
-        print("  missed %d:" % len(data["missed"]))
-        for name in data["missed"]:
-            print("    - %s" % name)
+        print("  geocoder missed %d" % len(data["missed"]))
 
 
 if __name__ == "__main__":
