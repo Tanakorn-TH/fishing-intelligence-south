@@ -57,7 +57,9 @@ echo "ผ่านครบ"
 # ---------- 3. รายการไฟล์ ----------
 # ประกาศชัดเจนทีละไฟล์ ไม่กวาดทั้งโฟลเดอร์
 # เพื่อไม่ให้ .git .env tests scripts หรือไฟล์เอกสารหลุดขึ้น production
-ROOT_FILES=(index.html styles.css design.css fonts.css app.js)
+ROOT_FILES=(index.html styles.css design.css fonts.css app.js map.js)
+# ข้อมูลเส้นชายฝั่งสำหรับแผนที่เลือกหมาย สร้างด้วย scripts/build-coastline.mjs
+MAP_FILES=(map/coastline-south.json)
 API_FILES=(
   api/spots.php api/gear.php api/health.php
   api/weather.php api/solunar.php api/tides.php api/score.php api/places.php
@@ -75,17 +77,25 @@ LIB_FILES=(
 #
 # เคยเกิดมาแล้วจริง: weather/solunar/tides/score กับ lib อีก 4 ตัวตกค้างอยู่ในเครื่อง
 # ไม่เคยขึ้น production เลย จึงเพิ่มด่านนี้ไว้ให้ล้มตั้งแต่ก่อนส่ง แทนที่จะไปพังบนเว็บจริง
-step "ตรวจว่าไม่มีไฟล์ PHP ตกหล่นจากรายการ"
-LISTED=" ${API_FILES[*]} ${LIB_FILES[*]} "
+step "ตรวจว่าไม่มีไฟล์ตกหล่นจากรายการ"
+LISTED=" ${ROOT_FILES[*]} ${API_FILES[*]} ${LIB_FILES[*]} ${MAP_FILES[*]} "
 MISSING_FROM_LIST=()
+
+# ตรวจทั้ง PHP ฝั่งหลังบ้าน และไฟล์หน้าเว็บที่เบราว์เซอร์ต้องโหลด
+# เคยพลาดมาแล้วทั้งสองแบบ: รอบแรก endpoint PHP หลายตัวไม่เคยขึ้น production
+# รอบที่สอง map.js กับไฟล์เส้นชายฝั่งเกือบตกค้างเพราะด่านเดิมดูแต่ .php
 while IFS= read -r found; do
   [[ "$LISTED" == *" $found "* ]] || MISSING_FROM_LIST+=("$found")
-done < <(find api -name '*.php' | sort)
+done < <({
+  find api -name '*.php'
+  find . -maxdepth 1 \( -name '*.js' -o -name '*.css' -o -name '*.html' \) -printf '%P\n'
+  find map -type f 2>/dev/null
+} | sort)
 
 if [ "${#MISSING_FROM_LIST[@]}" -gt 0 ]; then
   echo "ไฟล์เหล่านี้มีอยู่ในโปรเจคแต่ไม่อยู่ในรายการที่จะส่ง:" >&2
   printf '  %s\n' "${MISSING_FROM_LIST[@]}" >&2
-  die "เพิ่มเข้า API_FILES หรือ LIB_FILES ใน ops/deploy.sh ก่อน แล้วค่อย deploy"
+  die "เพิ่มเข้ารายการใน ops/deploy.sh ก่อน แล้วค่อย deploy"
 fi
 echo "ครบทุกไฟล์"
 # ฟอนต์ self-host — ไล่จากไฟล์จริงในโฟลเดอร์ ไม่ต้องมาแก้สคริปต์ทุกครั้งที่เพิ่มน้ำหนัก
@@ -93,7 +103,7 @@ mapfile -t FONT_FILES < <(find fonts -maxdepth 1 -name '*.woff2' | sort)
 [ "${#FONT_FILES[@]}" -gt 0 ] || die "ไม่พบไฟล์ฟอนต์ใน fonts/"
 
 step "ไฟล์ที่จะส่ง"
-for f in "${ROOT_FILES[@]}" "${API_FILES[@]}" "${LIB_FILES[@]}"; do
+for f in "${ROOT_FILES[@]}" "${API_FILES[@]}" "${LIB_FILES[@]}" "${MAP_FILES[@]}"; do
   [ -f "$f" ] || die "ไม่พบ $f"
   echo "  $f"
 done
@@ -108,9 +118,11 @@ BATCH="$WORK/batch.sftp"
   echo "-mkdir ${DEPLOY_DOCROOT}/api"
   echo "-mkdir ${DEPLOY_DOCROOT}/api/lib"
   echo "-mkdir ${DEPLOY_DOCROOT}/fonts"
+  echo "-mkdir ${DEPLOY_DOCROOT}/map"
   for f in "${ROOT_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/$(basename "$f")"; done
   for f in "${API_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/api/$(basename "$f")"; done
   for f in "${LIB_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/api/lib/$(basename "$f")"; done
+  for f in "${MAP_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/map/$(basename "$f")"; done
   for f in "${FONT_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/fonts/$(basename "$f")"; done
 } > "$BATCH"
 

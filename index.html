@@ -42,7 +42,7 @@
       <main class="page-in">
         <header class="topbar">
           <button type="button" class="menu-button press" aria-label="เปิดเมนู">☰</button>
-          <div class="location"><span class="pin">⌖</span><div><b id="locationName">ปัตตานี</b><small id="locationCoords">พิกัดอ้างอิง —</small></div><span class="chevron">⌄</span></div>
+          <button type="button" class="location press" id="openPlacePicker" aria-haspopup="dialog"><span class="pin">⌖</span><span class="location-text"><b id="locationName">ปัตตานี</b><small id="locationCoords">พิกัดอ้างอิง —</small></span><span class="chevron">⌄</span></button>
           <div class="top-actions"><button type="button" class="date-control press">▣ <span id="todayLabel">—</span>⌄</button><button type="button" class="notification press" aria-label="การแจ้งเตือน">♧<em></em></button></div>
         </header>
 
@@ -171,6 +171,33 @@
         <div class="depth-note"><span>≋</span><p><b>ชั้นข้อมูลความลึกพร้อมผูกกับหมาย</b><small>ใช้แนวลึกอ่าวไทยและอันดามันจากกรมทรัพยากรธรณี แล้วแสดงเป็นข้อมูลประกอบเท่านั้น ไม่ใช้เพื่อการเดินเรือ</small></p></div>
       </section>
     </dialog>
+    <dialog class="place-picker" id="placePicker" aria-labelledby="placePickerTitle">
+      <div class="picker-head">
+        <div><p class="eyebrow">SPOT</p><h2 id="placePickerTitle">เลือกจุดดูสภาพอากาศ</h2></div>
+        <button type="button" class="close-picker press" aria-label="ปิด">✕</button>
+      </div>
+
+      <div class="picker-tools">
+        <input type="search" id="placeSearch" placeholder="ค้นหาอำเภอหรือจังหวัด" autocomplete="off" enterkeyhint="search" />
+        <button type="button" class="use-gps press" id="useGps">⌖ ตำแหน่งของฉัน</button>
+      </div>
+
+      <div class="map-wrap">
+        <svg class="spot-map" id="spotMap" role="img" aria-labelledby="spotMapDesc" preserveAspectRatio="xMidYMid slice">
+          <title id="spotMapDesc">แผนที่ภาคใต้แสดงจุดที่เลือกดูสภาพอากาศได้</title>
+          <g id="mapLand"></g>
+          <g id="mapPins"></g>
+        </svg>
+        <button type="button" class="map-reset press" id="mapReset">ดูทั้งภาค</button>
+        <p class="map-note">แผนที่นี้ใช้เลือกจุดเท่านั้น <b>ไม่ใช่แผนที่เดินเรือ</b></p>
+      </div>
+
+      <div class="state-slot" id="placeState"></div>
+      <ul class="place-list" id="placeList"></ul>
+      <p class="datum-note" id="placeNotice"></p>
+    </dialog>
+
+    <script src="map.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

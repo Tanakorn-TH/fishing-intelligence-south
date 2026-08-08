@@ -246,6 +246,36 @@ function renderSource(element, meta) {
     : escapeHtml(parts.join(' · '));
 }
 
+const FAVOURITES_KEY = 'fis.places.favourites.v1';
+const LOCATION_KEY = 'fis.location.v1';
+const GPS_ASKED_KEY = 'fis.gps.asked.v1';
+
+/* หน่วงก่อนยิงค้นหา — สั้นพอให้รู้สึกทันใจ ยาวพอไม่ยิงทุกตัวอักษรที่พิมพ์ */
+const SEARCH_DEBOUNCE_MS = 250;
+
+let spotMap = null;
+let placeRows = [];
+let favourites = [];
+let searchSeq = 0;       // กันคำตอบเก่ามาทับคำตอบใหม่ตอนพิมพ์เร็ว ๆ
+let searchTimer = null;
+
+function readJsonSetting(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function writeJsonSetting(key, value) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    /* เก็บไม่ได้ก็ใช้งานรอบนี้ได้ ไม่ต้องรบกวนผู้ใช้ */
+  }
+}
+
 /* ═══ แถบบนและคำทักทาย — คำนวณจาก Date เสมอ ═══════════════════════════ */
 
 const now = new Date();
@@ -260,15 +290,40 @@ function greetingForHour(hour) {
 }
 document.getElementById('greeting').textContent = greetingForHour(now.getHours());
 
-/* ตำแหน่งที่ใช้คิวรีตอนนี้ — เริ่มที่จุดอ้างอิง แล้วเปลี่ยนเมื่อผู้ใช้เลือกหมายจริง */
-let activeLocation = { ...REFERENCE_POINT };
+/* ตำแหน่งที่ใช้คิวรีตอนนี้
+   ลำดับ: จุดที่ผู้ใช้เคยเลือกไว้ > จุดอ้างอิง
+   ถ้ายังไม่เคยเลือกและยังไม่เคยถาม GPS จะขอตำแหน่งให้อัตโนมัติหลังหน้าโหลดเสร็จ
+   หน้าเว็บไม่รอ GPS — แสดงด้วยจุดสำรองไปก่อนแล้วค่อยขยับ เพราะการรอสิทธิ์
+   อาจกินเวลาหลายวินาที หรือผู้ใช้อาจไม่ตอบเลย */
+let activeLocation = (() => {
+  const saved = readJsonSetting(LOCATION_KEY, null);
+  if (saved && isFiniteNumber(saved.lat) && isFiniteNumber(saved.lon)) {
+    return saved;
+  }
+  return { ...REFERENCE_POINT };
+})();
+
+favourites = readJsonSetting(FAVOURITES_KEY, []);
+if (!Array.isArray(favourites)) favourites = [];
 
 function renderLocation() {
   document.getElementById('locationName').textContent = activeLocation.label;
+
+  // บอกจังหวัดและฝั่งทะเลถ้ารู้ เพราะชื่ออำเภอซ้ำกันข้ามจังหวัดได้
+  // และสองฝั่งมีสภาพคลื่นลมคนละแบบ ผู้ใช้ต้องอ่านออกว่ากำลังดูฝั่งไหน
+  const parts = [];
+  if (activeLocation.province) parts.push(String(activeLocation.province).replace('จังหวัด', 'จ.'));
+  if (activeLocation.coast) parts.push(activeLocation.coast);
+
+  if (parts.length) {
+    document.getElementById('locationCoords').textContent = parts.join(' · ');
+    return;
+  }
+
   const coords = `${roundTo(activeLocation.lat, 4)}, ${roundTo(activeLocation.lon, 4)}`;
   document.getElementById('locationCoords').textContent = activeLocation.isReference
     ? `พิกัดอ้างอิง ${coords}`
-    : `หมายที่เลือก ${coords}`;
+    : coords;
 }
 renderLocation();
 
@@ -513,6 +568,239 @@ async function loadSolunar() {
   }
 }
 retryActions.solunar = loadSolunar;
+
+/* ═══ เลือกจุด/หมาย — GET /api/places.php ══════════════════════════════
+   รายการเรียงตามระยะทางจากจุดที่ดูอยู่ ที่ติดดาวขึ้นก่อนเสมอ
+   แผนที่กับรายการเป็นมุมมองสองแบบของข้อมูลชุดเดียวกัน เลือกจากทางไหนก็ได้ผลเหมือนกัน */
+
+function isFavourite(id) {
+  return favourites.includes(id);
+}
+
+function toggleFavourite(id) {
+  favourites = isFavourite(id)
+    ? favourites.filter((item) => item !== id)
+    : favourites.concat([id]);
+  writeJsonSetting(FAVOURITES_KEY, favourites);
+  renderPlaceList();
+}
+
+/* ที่ติดดาวขึ้นบนสุด ที่เหลือคงลำดับตามระยะทางที่ API ส่งมา */
+function sortedPlaceRows() {
+  const starred = placeRows.filter((row) => isFavourite(row.id));
+  const rest = placeRows.filter((row) => !isFavourite(row.id));
+  return { starred, rest };
+}
+
+function placeRowMarkup(row) {
+  const starred = isFavourite(row.id);
+  const distance = isFiniteNumber(row.distance_km)
+    ? `<span class="place-distance">${roundTo(row.distance_km, row.distance_km < 10 ? 1 : 0)} กม.</span>`
+    : '';
+  const active = row.id === activeLocation.id;
+
+  return `<li class="place-row${active ? ' is-active' : ''}" data-place-id="${escapeHtml(row.id)}">`
+    + `<button type="button" class="place-star press" data-star="${escapeHtml(row.id)}"`
+    + ` aria-pressed="${starred ? 'true' : 'false'}" aria-label="${starred ? 'เอาดาวออกจาก' : 'ติดดาว'} ${escapeHtml(row.name)}">`
+    + `${starred ? '★' : '☆'}</button>`
+    + `<button type="button" class="place-pick press" data-pick="${escapeHtml(row.id)}">`
+    + `<span class="place-name">${escapeHtml(row.name)}</span>`
+    + `<small>${escapeHtml(row.province)}${row.coast_label ? ` · ${escapeHtml(row.coast_label)}` : ''}</small>`
+    + '</button>'
+    + distance
+    + '</li>';
+}
+
+function renderPlaceList() {
+  const list = document.getElementById('placeList');
+  const { starred, rest } = sortedPlaceRows();
+
+  if (!placeRows.length) {
+    list.innerHTML = '';
+    return;
+  }
+
+  let markup = '';
+  if (starred.length) {
+    markup += '<li class="place-group">★ ที่ติดดาวไว้</li>' + starred.map(placeRowMarkup).join('');
+    if (rest.length) markup += '<li class="place-group">เรียงตามระยะทาง</li>';
+  }
+  markup += rest.map(placeRowMarkup).join('');
+
+  list.innerHTML = markup;
+
+  if (spotMap) {
+    spotMap.setPlaces(placeRows);
+    spotMap.setSelected(activeLocation.id || null);
+  }
+}
+
+async function loadPlaces(query = '') {
+  const slot = document.getElementById('placeState');
+  const seq = ++searchSeq;
+
+  renderState(slot, { kind: 'loading', title: 'กำลังค้นหา…' });
+
+  try {
+    const params = { lat: activeLocation.lat, lon: activeLocation.lon, limit: 100 };
+    if (query) params.q = query;
+    const payload = await fetchJson('api/places.php', params);
+
+    // คำตอบของคำค้นเก่ามาช้ากว่าคำใหม่ได้ ทิ้งไปเลยไม่ต้องวาด
+    if (seq !== searchSeq) return;
+
+    placeRows = Array.isArray(payload.data) ? payload.data : [];
+    renderState(slot, placeRows.length ? null : {
+      kind: 'empty',
+      title: 'ไม่พบสถานที่ที่ค้นหา',
+      detail: 'ลองพิมพ์ชื่ออำเภอหรือจังหวัดแทน',
+    });
+    renderPlaceList();
+    document.getElementById('placeNotice').textContent = (payload.meta && payload.meta.notice) || '';
+  } catch (error) {
+    if (seq !== searchSeq) return;
+    placeRows = [];
+    document.getElementById('placeList').innerHTML = '';
+    renderState(slot, {
+      kind: 'error',
+      title: 'ค้นหาไม่สำเร็จ',
+      detail: error.message,
+      retry: 'places',
+    });
+  }
+}
+retryActions.places = () => loadPlaces(document.getElementById('placeSearch').value.trim());
+
+/* เปลี่ยนจุดที่กำลังดู แล้วโหลดข้อมูลทุกก้อนใหม่ */
+function applyLocation(next, { remember = true } = {}) {
+  activeLocation = next;
+  renderLocation();
+  if (remember) writeJsonSetting(LOCATION_KEY, next);
+
+  loadWeather();
+  loadSolunar();
+  loadTides();
+  loadScore();
+
+  if (spotMap) spotMap.setSelected(next.id || null);
+}
+
+function pickPlace(id) {
+  const row = placeRows.find((item) => item.id === id);
+  if (!row) return;
+
+  applyLocation({
+    id: row.id,
+    lat: row.lat,
+    lon: row.lon,
+    label: row.name,
+    province: row.province,
+    coast: row.coast_label || '',
+    isReference: false,
+  });
+
+  if (spotMap) spotMap.focus(row.lat, row.lon);
+  renderPlaceList();
+}
+
+/* ── ตำแหน่งจาก GPS ────────────────────────────────────────────────────
+   ขอครั้งแรกที่เข้าเว็บเท่านั้น ถ้าเคยเลือกจุดไว้แล้วจะไม่รบกวนอีก
+   ไม่บล็อกการแสดงผล — หน้าเว็บโหลดด้วยจุดสำรองไปก่อน แล้วค่อยขยับเมื่อได้ตำแหน่ง */
+function requestGps({ silent = false } = {}) {
+  if (!navigator.geolocation) {
+    if (!silent) showToast('อุปกรณ์นี้ไม่รองรับการหาตำแหน่ง');
+    return;
+  }
+
+  if (!silent) showToast('กำลังหาตำแหน่ง…');
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lat = roundTo(position.coords.latitude, 4);
+      const lon = roundTo(position.coords.longitude, 4);
+
+      try {
+        // แปลงพิกัดดิบเป็นชื่อที่อ่านรู้เรื่อง โดยบอกระยะห่างตรง ๆ
+        // ไม่เคลมว่าผู้ใช้อยู่ "ที่" สถานที่นั้น เพราะอาจห่างหลายสิบกิโลเมตร
+        const payload = await fetchJson('api/places.php', { lat, lon, limit: 1 });
+        const nearest = (payload.data || [])[0];
+        const inRegion = payload.meta && payload.meta.in_region;
+
+        applyLocation({
+          id: null,
+          lat,
+          lon,
+          label: nearest && inRegion ? `ใกล้ ${nearest.name}` : 'ตำแหน่งของฉัน',
+          province: nearest && inRegion ? nearest.province : '',
+          coast: nearest && inRegion ? (nearest.coast_label || '') : '',
+          isReference: false,
+          isGps: true,
+          nearestKm: nearest ? nearest.distance_km : null,
+        });
+
+        if (spotMap) {
+          spotMap.setOrigin({ lat, lon });
+          spotMap.focus(lat, lon);
+        }
+        if (!inRegion) showToast('ตำแหน่งของคุณอยู่นอกภาคใต้ ข้อมูลบางส่วนอาจไม่ครอบคลุม');
+        loadPlaces(document.getElementById('placeSearch').value.trim());
+      } catch (error) {
+        if (!silent) showToast('หาชื่อสถานที่ใกล้เคียงไม่ได้');
+      }
+    },
+    () => {
+      if (!silent) showToast('ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง เลือกจุดเองได้จากรายการ');
+    },
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+  );
+}
+
+/* ── การเปิด-ปิดแผงและการโต้ตอบ ───────────────────────────────────────── */
+
+async function openPlacePicker() {
+  const dialog = document.getElementById('placePicker');
+  dialog.showModal();
+
+  if (!spotMap) {
+    spotMap = new SpotMap(document.getElementById('spotMap'));
+    spotMap.onPick = pickPlace;
+    spotMap.reset();
+
+    try {
+      const response = await fetch('map/coastline-south.json');
+      if (response.ok) spotMap.setCoastline(await response.json());
+    } catch (error) {
+      /* ไม่มีชายฝั่งก็ยังเลือกจากรายการได้ แผนที่แค่ว่างเปล่า */
+    }
+    if (activeLocation.isGps) spotMap.setOrigin({ lat: activeLocation.lat, lon: activeLocation.lon });
+  }
+
+  spotMap.setSelected(activeLocation.id || null);
+  await loadPlaces(document.getElementById('placeSearch').value.trim());
+}
+
+document.getElementById('openPlacePicker').addEventListener('click', openPlacePicker);
+document.querySelector('.close-picker').addEventListener('click', () => {
+  document.getElementById('placePicker').close();
+});
+document.getElementById('mapReset').addEventListener('click', () => spotMap && spotMap.reset());
+document.getElementById('useGps').addEventListener('click', () => requestGps());
+
+document.getElementById('placeSearch').addEventListener('input', (event) => {
+  const value = event.target.value.trim();
+  window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => loadPlaces(value), SEARCH_DEBOUNCE_MS);
+});
+
+document.getElementById('placeList').addEventListener('click', (event) => {
+  const star = event.target.closest('[data-star]');
+  if (star) {
+    toggleFavourite(star.dataset.star);
+    return;
+  }
+  const pick = event.target.closest('[data-pick]');
+  if (pick) pickPlace(pick.dataset.pick);
+});
 
 /* ═══ Fishing Score — GET /api/score.php ═══════════════════════════════
    คะแนนนี้มาจากน้ำหนักที่ทีมเลือกเอง ไม่ได้ปรับจากสถิติการจับปลาจริง
@@ -1376,3 +1664,12 @@ loadTides();
 loadScore();
 loadSpots();
 loadGear();
+
+/* ขอตำแหน่งครั้งแรกที่เข้าเว็บเท่านั้น
+   เคยเลือกจุดไว้แล้ว = เคารพการเลือกนั้น ไม่ต้องถามอีก
+   เคยถามแล้วไม่ว่าผลเป็นอย่างไร = ไม่ถามซ้ำ คนที่กดปฏิเสธไปแล้วจะได้ไม่โดนรบกวนทุกครั้ง
+   อยากใช้เมื่อไหร่กดปุ่ม "ตำแหน่งของฉัน" ในแผงเลือกจุดได้ตลอด */
+if (!readJsonSetting(LOCATION_KEY, null) && !readJsonSetting(GPS_ASKED_KEY, false)) {
+  writeJsonSetting(GPS_ASKED_KEY, true);
+  requestGps({ silent: true });
+}
