@@ -140,6 +140,55 @@ jobs:
           done
           API_BASE=http://127.0.0.1:8080 php tests/api-test.php
 
+      # solunar คำนวณในระบบทั้งหมด ไม่เรียกบริการภายนอกและไม่ใช้ฐานข้อมูล
+      # จึงให้ผลเหมือนเดิมทุกครั้งและเอามากั้นการ merge ได้โดยไม่มีความเสี่ยงเรื่องความไม่เสถียร
+      # ค่าที่ตรึงไว้มาจากตารางของ U.S. Naval Observatory ถ้าชุดนี้ตกแปลว่าสูตรดาราศาสตร์เพี้ยนจริง
+      - name: ทดสอบ solunar (คำนวณในระบบ ไม่ต้องต่อเน็ต)
+        run: API_BASE=http://127.0.0.1:8080 php tests/solunar-test.php
+
+      - name: log ของเซิร์ฟเวอร์ ถ้าเทสต์ล้ม
+        if: failure()
+        run: cat /tmp/php-server.log
+
+  # ---------------------------------------------------------------------------
+  # ชุดที่ต้องออกไปหา Open-Meteo จริง แยกออกมาเป็น job ของตัวเองโดยตั้งใจ
+  #
+  # เหตุผลที่ไม่เอาไปรวมกับ job ด้านบน: ถ้าปลายทางล่ม การ merge ทุกอันจะถูกบล็อก
+  # ทั้งที่โค้ดเราไม่ได้ผิดอะไร แยกไว้แบบนี้ผลจะยังขึ้นให้เห็นบน PR
+  # (ล้มแล้วเป็นสีแดง) แต่ไม่ไปขวางงานคนอื่น ถ้าทีมอยากให้บล็อกด้วย
+  # ให้เพิ่มชื่อ job นี้เข้าไปใน ruleset ของ branch เอาเอง
+  # ---------------------------------------------------------------------------
+  remote-api:
+    name: ตรวจ API ที่ต้องต่ออินเทอร์เน็ต
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+
+      - name: รันเซิร์ฟเวอร์
+        run: |
+          php -S 127.0.0.1:8080 -t . > /tmp/php-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf 'http://127.0.0.1:8080/api/solunar.php?lat=6.87&lon=101.25' > /dev/null && break
+            sleep 1
+          done
+
+      # endpoint เหล่านี้ไม่ใช้ฐานข้อมูล จึงไม่ต้องตั้ง MySQL ให้ job นี้
+      - name: ทดสอบสภาพอากาศ
+        run: API_BASE=http://127.0.0.1:8080 php tests/weather-test.php
+
+      - name: ทดสอบระดับน้ำ
+        run: API_BASE=http://127.0.0.1:8080 php tests/tides-test.php
+
+      # score พึ่งทั้งอากาศและระดับน้ำ จึงรันท้ายสุด
+      # ชุดนี้ยังเทียบน้ำหนักในโค้ดกับตารางใน docs/fishing-score.md ด้วย
+      # ถ้าใครแก้สูตรโดยไม่แก้เอกสาร (หรือกลับกัน) จะตกตรงนี้
+      - name: ทดสอบ Fishing Score
+        run: API_BASE=http://127.0.0.1:8080 php tests/score-test.php
+
       - name: log ของเซิร์ฟเวอร์ ถ้าเทสต์ล้ม
         if: failure()
         run: cat /tmp/php-server.log
