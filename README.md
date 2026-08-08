@@ -43,6 +43,8 @@ fishing-intelligence-south/
 ├── data-model.sql        # สคีมา MySQL 8 พร้อม seed ของ gear_rules
 ├── BATHYMETRY_IMPORT.md  # ขั้นตอนนำเข้าข้อมูลความลึกท้องทะเลจากกรมทรัพยากรธรณี
 ├── CONTRIBUTING.md       # แนวทางร่วมพัฒนา กติกา PR และสิ่งที่ CI ตรวจ
+├── fonts.css             # @font-face ทั้งหมด สร้างจากสคริปต์ อย่าแก้ด้วยมือ
+├── fonts/                # ไฟล์ฟอนต์ self-host ไม่พึ่ง Google Fonts
 ├── api/                  # backend PHP
 │   ├── spots.php         # GET รายการหมายตกปลาสาธารณะ
 │   ├── gear.php          # GET กติกาแนะนำอุปกรณ์ตาม style + depth

@@ -30,9 +30,18 @@
 
   --glass-radius: 16px;
 
-  /* ฟอนต์ตัวเลข — ทุกหลักกว้างเท่ากัน ค่าที่เปลี่ยนจึงไม่กระตุกซ้ายขวา */
+  /* ── ฟอนต์ ────────────────────────────────────────────────────────────
+     'Jost Num' มีเฉพาะเลข 0-9 (ดู fonts.css) วางไว้หน้าสุดของทุก stack
+     ตัวเลขทั้งเว็บจึงเป็น Jost อัตโนมัติ ส่วนตัวอักษรตกไปใช้ฟอนต์ถัดไป
+     เทคนิคนี้ยืมมาจาก ite-avm — ครอบคลุมกว่าการไล่ใส่คลาสให้ตัวเลขทีละจุด
+     และไม่มีทางตกหล่นตอนเพิ่มหน้าใหม่ */
+  --font-sans: 'Jost Num', 'Noto Sans Thai', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Jost Num', 'DM Mono', ui-monospace, monospace;
   --font-num: 'Jost', 'Noto Sans Thai', ui-sans-serif, system-ui, sans-serif;
 }
+
+/* stack หลักของทั้งเว็บ — styles.css ตั้งไว้ที่ :root ว่า "Noto Sans Thai" เฉย ๆ */
+:root { font-family: var(--font-sans); }
 
 /* ═══ 2. พื้นหลังจัดจ้าน ═══════════════════════════════════════════════
    สัญญาณที่ขาดไม่ได้ที่สุด — กระจกจะเป็นกระจกก็ต่อเมื่อมีอะไรให้เบลอ
@@ -317,7 +326,37 @@ body {
    เมื่อไหร่ วรรณยุกต์บรรทัดล่างจะชนสระบรรทัดบน ของเดิมตั้งพาดหัวไว้ 1.18 */
 .hero-copy h1 { line-height: 1.3; }
 
-/* ═══ ตัวเลข ══════════════════════════════════════════════════════════ */
+/* ═══ ตัวเลข ══════════════════════════════════════════════════════════
+   ทั้ง 20 selector นี้ styles.css กำหนด font-family เป็น "DM Mono" ไว้เอง
+   ซึ่งทับ stack หลัก ตัวเลขในนั้นจึงไม่ได้ Jost ถ้าไม่เติม 'Jost Num' ให้
+   DM Mono ยังทำหน้าที่เดิมกับตัวอักษรและเครื่องหมายทุกตัว */
+.sidebar-label,
+.eyebrow,
+.major-window small,
+.score-top,
+.score-number > span,
+.metric b,
+.current-height,
+.chart-label,
+.chart-times,
+.tide-events b,
+.tide-events strong,
+.time-block strong,
+.hour b,
+.hour strong,
+.hour small,
+.spot-image span,
+.spot-content b,
+.step-copy > span,
+.calendar-context > span,
+.calendar-heading h3 small,
+.day b,
+.day span {
+  font-family: var(--font-mono);
+}
+
+/* ตัวเลขที่ยืนเดี่ยวเป็นพระเอกของการ์ด ต้องกว้างเท่ากันทุกหลัก
+   ไม่งั้นเวลาค่าเปลี่ยน (เช่นคะแนนวิ่ง) ตัวเลขจะกระตุกซ้ายขวา */
 .score-number b,
 .current-height,
 .metric b,
@@ -328,7 +367,6 @@ body {
 .tide-events strong,
 .time-block strong,
 .spot-content b {
-  font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
 }

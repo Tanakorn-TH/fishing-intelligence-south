@@ -57,15 +57,19 @@ echo "ผ่านครบ"
 # ---------- 3. รายการไฟล์ ----------
 # ประกาศชัดเจนทีละไฟล์ ไม่กวาดทั้งโฟลเดอร์
 # เพื่อไม่ให้ .git .env tests scripts หรือไฟล์เอกสารหลุดขึ้น production
-ROOT_FILES=(index.html styles.css design.css app.js)
+ROOT_FILES=(index.html styles.css design.css fonts.css app.js)
 API_FILES=(api/spots.php api/gear.php api/health.php)
 LIB_FILES=(api/lib/config.php api/lib/db.php api/lib/http.php api/lib/.htaccess)
+# ฟอนต์ self-host — ไล่จากไฟล์จริงในโฟลเดอร์ ไม่ต้องมาแก้สคริปต์ทุกครั้งที่เพิ่มน้ำหนัก
+mapfile -t FONT_FILES < <(find fonts -maxdepth 1 -name '*.woff2' | sort)
+[ "${#FONT_FILES[@]}" -gt 0 ] || die "ไม่พบไฟล์ฟอนต์ใน fonts/"
 
 step "ไฟล์ที่จะส่ง"
 for f in "${ROOT_FILES[@]}" "${API_FILES[@]}" "${LIB_FILES[@]}"; do
   [ -f "$f" ] || die "ไม่พบ $f"
   echo "  $f"
 done
+echo "  fonts/ (${#FONT_FILES[@]} ไฟล์)"
 echo "ปลายทาง: ${TARGET}:${DEPLOY_DOCROOT}"
 
 WORK="$(mktemp -d)"
@@ -75,9 +79,11 @@ BATCH="$WORK/batch.sftp"
 {
   echo "-mkdir ${DEPLOY_DOCROOT}/api"
   echo "-mkdir ${DEPLOY_DOCROOT}/api/lib"
+  echo "-mkdir ${DEPLOY_DOCROOT}/fonts"
   for f in "${ROOT_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/$(basename "$f")"; done
   for f in "${API_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/api/$(basename "$f")"; done
   for f in "${LIB_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/api/lib/$(basename "$f")"; done
+  for f in "${FONT_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/fonts/$(basename "$f")"; done
 } > "$BATCH"
 
 # ---------- 4. ไฟล์ตั้งค่าเซิร์ฟเวอร์ (เฉพาะ --setup) ----------
