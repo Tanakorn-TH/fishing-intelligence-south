@@ -1,7 +1,10 @@
 /* คลื่นดี — Fishing Intelligence South
    หน้าเว็บดึงข้อมูลจริงจาก api/ ตาม docs/api-contract.md
-   ส่วนที่ยังไม่มี backend (คะแนน ปฏิทินคะแนน น้ำขึ้นน้ำลง) ยังเป็นชุดตัวอย่าง
-   และถูกติดป้าย "ข้อมูลตัวอย่าง" ไว้ใน index.html ทุกจุด — ห้ามถอดป้ายออกจนกว่าจะมีข้อมูลจริง */
+   ส่วนที่ยังไม่มี backend (คะแนน ปฏิทินคะแนน) ยังเป็นชุดตัวอย่าง
+   และถูกติดป้าย "ข้อมูลตัวอย่าง" ไว้ใน index.html ทุกจุด — ห้ามถอดป้ายออกจนกว่าจะมีข้อมูลจริง
+
+   น้ำขึ้นน้ำลงเป็นข้อมูลจริงแล้ว แต่มีเงื่อนไขเรื่อง datum ที่ต้องบอกผู้ใช้เสมอ
+   ดูคำอธิบายเหนือ loadTides() ก่อนแก้ส่วนนั้น */
 
 /* เลขเวอร์ชัน — ที่นี่ที่เดียวเป็นแหล่งความจริง
    ปล่อยรุ่น = แก้เลขนี้ + สร้าง git tag ชื่อเดียวกัน (vX.Y.Z) แล้ว push tags
@@ -510,6 +513,189 @@ async function loadSolunar() {
 }
 retryActions.solunar = loadSolunar;
 
+/* ═══ น้ำขึ้นน้ำลง — GET /api/tides.php ════════════════════════════════
+   ⚠️ ค่าที่ได้อ้างอิงระดับน้ำทะเลปานกลาง (MSL) ไม่ใช่ระดับน้ำลงต่ำสุดแบบตารางน้ำทางการ
+   ตัวเลขความลึกจึงเทียบกับตารางของกรมอุทกศาสตร์ไม่ได้ สิ่งที่ใช้ได้คือ "จังหวะ" น้ำขึ้นน้ำลง
+   คำเตือนนี้มาจาก data.notice ของ API — ต้องแสดงให้ผู้ใช้เห็นเสมอ ห้ามซ่อนเพราะกินที่ */
+
+/* ขนาดของ viewBox ในกราฟ SVG ต้องตรงกับที่เขียนไว้ใน index.html */
+const TIDE_CHART_W = 700;
+const TIDE_CHART_H = 165;
+
+/* เว้นขอบบน-ล่างไว้ ไม่ให้ยอดคลื่นแตะขอบกราฟพอดีจนดูเหมือนโดนตัด */
+const TIDE_CHART_PAD = 18;
+
+function tideTrendLabel(trend) {
+  if (trend === 'rising') return 'น้ำกำลังขึ้น';
+  if (trend === 'falling') return 'น้ำกำลังลง';
+  return 'ระดับน้ำคงที่';
+}
+
+/* สร้าง path ของเส้นกราฟจากชุดข้อมูลจริง
+   ปรับสเกลแนวตั้งตามค่าต่ำสุด-สูงสุดของวันนั้น ไม่ใช่ค่าคงที่
+   เพราะพิสัยน้ำอ่าวไทยเปลี่ยนตามน้ำเกิดน้ำตาย ถ้าตรึงสเกลไว้ วันน้ำตายจะดูแบนจนอ่านไม่ออก */
+function tideChartPaths(series) {
+  const heights = series.map((point) => point.height_m).filter(isFiniteNumber);
+  if (heights.length < 2) return null;
+
+  const min = Math.min(...heights);
+  const max = Math.max(...heights);
+  const span = max - min || 1; // กันหารศูนย์ในวันที่น้ำแทบไม่ขยับ
+  const usable = TIDE_CHART_H - TIDE_CHART_PAD * 2;
+
+  const points = series.map((point, index) => {
+    const x = (index / (series.length - 1)) * TIDE_CHART_W;
+    // แกน y ของ SVG ชี้ลง ค่าน้ำสูงจึงต้องได้ y น้อย
+    const y = TIDE_CHART_PAD + (1 - (point.height_m - min) / span) * usable;
+    return { x: roundTo(x, 1), y: roundTo(y, 1) };
+  });
+
+  const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  return {
+    line,
+    area: `${line} L${TIDE_CHART_W},${TIDE_CHART_H} L0,${TIDE_CHART_H}Z`,
+    points,
+    min,
+    max,
+  };
+}
+
+function renderTideChart(series, currentIso) {
+  const paths = tideChartPaths(series);
+  const nowPoint = document.getElementById('tideNowPoint');
+  const nowLine = document.getElementById('tideNowLine');
+
+  if (!paths) {
+    document.getElementById('tideLine').setAttribute('d', '');
+    document.getElementById('tideArea').setAttribute('d', '');
+    nowPoint.hidden = true;
+    nowLine.hidden = true;
+    document.getElementById('tideChartLabel').textContent = '';
+    return;
+  }
+
+  document.getElementById('tideLine').setAttribute('d', paths.line);
+  document.getElementById('tideArea').setAttribute('d', paths.area);
+  document.getElementById('tideChartLabel').textContent =
+    `สูงสุด ${roundTo(paths.max, 2)} m · ต่ำสุด ${roundTo(paths.min, 2)} m`;
+
+  // เส้น "ตอนนี้" วางตามชั่วโมงปัจจุบันที่ API บอกมา ไม่ใช่เวลาเครื่องผู้ใช้
+  // เพราะผู้ใช้อาจเปิดดูจากคนละเขตเวลา แต่ข้อมูลเป็นเวลาหน้างานเสมอ
+  const index = currentIso
+    ? series.findIndex((point) => point.time === currentIso)
+    : -1;
+
+  if (index >= 0 && paths.points[index]) {
+    const p = paths.points[index];
+    nowPoint.setAttribute('cx', String(p.x));
+    nowPoint.setAttribute('cy', String(p.y));
+    nowLine.setAttribute('x1', String(p.x));
+    nowLine.setAttribute('x2', String(p.x));
+    nowPoint.hidden = false;
+    nowLine.hidden = false;
+  } else {
+    nowPoint.hidden = true;
+    nowLine.hidden = true;
+  }
+}
+
+function renderTideEvents(extremes) {
+  const box = document.getElementById('tideEvents');
+  if (!extremes.length) {
+    box.innerHTML = '<p class="tide-empty">วันนี้ไม่พบจุดน้ำขึ้นหรือน้ำลงเต็มที่จากแบบจำลอง</p>';
+    return;
+  }
+
+  box.innerHTML = extremes.map((event) => {
+    const isHigh = event.type === 'high';
+    const height = isFiniteNumber(event.height_m) ? `${roundTo(event.height_m, 2)}m` : '—';
+    return '<div>'
+      + `<span class="event-icon ${isHigh ? 'up' : 'down'}">${isHigh ? '↑' : '↓'}</span>`
+      + `<p><small>${isHigh ? 'น้ำขึ้น' : 'น้ำลง'}</small><b>${escapeHtml(formatIsoTime(event.time))}</b></p>`
+      + `<strong>${escapeHtml(height)}</strong>`
+      + '</div>';
+  }).join('');
+}
+
+/* หาจุดยอดถัดไปจากเวลาปัจจุบัน ใช้บอกว่า "น้ำกำลังขึ้นจนถึงกี่โมง" */
+function nextTideEvent(extremes) {
+  const stamp = Date.now();
+  return extremes.find((event) => Date.parse(event.time) > stamp) || null;
+}
+
+function renderTides(payload) {
+  const data = payload.data || {};
+  const series = Array.isArray(data.series) ? data.series.filter((p) => p && isFiniteNumber(p.height_m)) : [];
+  const extremes = Array.isArray(data.extremes) ? data.extremes : [];
+  const current = data.current || null;
+
+  document.getElementById('tideState').hidden = true;
+  document.getElementById('tideState').innerHTML = '';
+  document.getElementById('tideBody').hidden = false;
+
+  // คำเตือนเรื่อง datum มาจาก API ตรง ๆ ไม่ได้เขียนซ้ำไว้ในหน้า
+  // ถ้าวันหนึ่ง backend แก้คำเตือน หน้าเว็บจะเปลี่ยนตามเองโดยไม่ต้องแก้สองที่
+  const notice = document.getElementById('tideNotice');
+  if (data.notice) {
+    notice.textContent = data.notice;
+    notice.hidden = false;
+    document.getElementById('tideDatumBadge').hidden = false;
+  } else {
+    notice.hidden = true;
+    document.getElementById('tideDatumBadge').hidden = true;
+  }
+
+  if (current && isFiniteNumber(current.height_m)) {
+    document.getElementById('tideTrend').textContent = tideTrendLabel(current.trend);
+    setMetric(document.getElementById('tideHeight'), roundTo(current.height_m, 2), 'm');
+
+    const upcoming = nextTideEvent(extremes);
+    document.getElementById('tideTrendNote').textContent = upcoming
+      ? `${upcoming.type === 'high' ? 'น้ำขึ้นเต็มที่' : 'น้ำลงเต็มที่'} ${formatIsoTime(upcoming.time)} น.`
+      : 'ไม่มีจุดน้ำขึ้นน้ำลงเหลือในวันนี้';
+  } else {
+    // ดูวันอื่นที่ไม่ใช่วันนี้ — API ไม่ส่ง current มาให้โดยตั้งใจ ห้ามเดาเองว่า "ตอนนี้" คือเมื่อไหร่
+    document.getElementById('tideTrend').textContent = 'ดูล่วงหน้า';
+    document.getElementById('tideTrendNote').textContent = 'ไม่ใช่วันนี้ จึงไม่มีระดับน้ำ ณ ขณะนี้';
+    setMetric(document.getElementById('tideHeight'), '—', '');
+  }
+
+  renderTideChart(series, current ? current.time : null);
+  renderTideEvents(extremes);
+  renderSource(document.getElementById('tideSource'), payload.meta);
+}
+
+async function loadTides() {
+  const slot = document.getElementById('tideState');
+  document.getElementById('tideBody').hidden = true;
+  document.getElementById('tideNotice').hidden = true;
+  document.getElementById('tideDatumBadge').hidden = true;
+  renderState(slot, {
+    kind: 'loading',
+    title: 'กำลังโหลดระดับน้ำ…',
+    detail: `พิกัด ${activeLocation.lat}, ${activeLocation.lon}`,
+  });
+
+  try {
+    const payload = await fetchJson('api/tides.php', {
+      lat: activeLocation.lat,
+      lon: activeLocation.lon,
+      date: isoDate(new Date()),
+    });
+    renderTides(payload);
+  } catch (error) {
+    document.getElementById('tideBody').hidden = true;
+    renderState(slot, {
+      kind: error.status === 400 ? 'empty' : 'error',
+      title: error.status === 400 ? 'จุดนี้ยังไม่มีข้อมูลระดับน้ำ' : 'ยังไม่มีข้อมูลระดับน้ำ',
+      detail: error.message,
+      retry: 'tides',
+    });
+    renderSource(document.getElementById('tideSource'), null);
+  }
+}
+retryActions.tides = loadTides;
+
 /* ═══ หมายตกปลา — GET /api/spots.php ═══════════════════════════════════
    ตาราง fishing_spots ยังว่าง สถานะ "ไม่มีข้อมูล" คือสถานะปกติของตอนนี้
    ห้ามเติมหมายตัวอย่างลงไป ผู้ใช้จะเข้าใจผิดว่ามีพิกัดจริงให้ใช้ */
@@ -611,6 +797,7 @@ function selectSpot(spotId, refresh = true) {
   renderLocation();
   loadWeather();
   loadSolunar();
+  loadTides();
 
   if (spot.depth && isFiniteNumber(spot.depth.typical_m)) {
     document.getElementById('gearDepth').value = String(roundTo(spot.depth.typical_m, 1));
@@ -886,5 +1073,6 @@ if (window.matchMedia('(pointer: fine)').matches
    แต่ละก้อนจับ error ของตัวเองไว้แล้ว ตัวที่ล้มจึงไม่ลากตัวอื่นล้มตาม */
 loadWeather();
 loadSolunar();
+loadTides();
 loadSpots();
 loadGear();
