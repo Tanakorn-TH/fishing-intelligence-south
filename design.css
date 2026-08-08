@@ -436,11 +436,393 @@ body {
 
 .footer-legal { font-size: 10.5px; color: #6f9298; }
 
+/* ═══ ป้าย "ข้อมูลตัวอย่าง" ════════════════════════════════════════════
+   ที่ไหนยังไม่มี backend ที่นั่นต้องมีป้ายนี้ ห้ามถอดออกจนกว่าจะมีข้อมูลจริง
+   เหตุผล: คนเอาตัวเลขบนหน้านี้ไปวางแผนออกทะเลจริง
+
+   ใช้ --orange ของพาเลตต์เดิมเป็นสีเตือน ไม่เพิ่มสีแดงใหม่เข้ามา
+   เฉดอ่อนของป้ายผสมจากตัวแปรเดิมด้วย color-mix ไม่ได้พิมพ์ค่าสีใหม่ลงไป */
+.sample-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  background-color: rgba(255, 255, 255, .07);
+  color: var(--orange);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 1.1px;
+  line-height: 1.45;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@supports (color: color-mix(in srgb, white 10%, transparent)) {
+  .sample-badge {
+    border-color: color-mix(in srgb, var(--orange) 58%, transparent);
+    background-color: color-mix(in srgb, var(--orange) 15%, transparent);
+  }
+}
+
+.sample-note {
+  margin: 11px 0 0;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.sample-note b { color: var(--orange); font-weight: 700; }
+
+/* ขอบบนของแผ่นกระจกเป็นสีเตือนจาง ๆ — สัญญาณที่สองที่เห็นได้จากมุมตา
+   ใช้ช่องทางเดิมของดีไซน์ (สันกระจกสว่าง) ไม่ได้แปะกรอบใหม่ทับ */
+@supports (color: color-mix(in srgb, white 10%, transparent)) {
+  .is-sample { border-top-color: color-mix(in srgb, var(--orange) 50%, var(--glass-line-top)); }
+}
+
+/* ตัวเลขตัวอย่างจางลงกว่าตัวเลขจริง — อ่านออกแต่ไม่แย่งความน่าเชื่อถือ */
+.is-sample .score-number,
+.is-sample .tide-status,
+.is-sample .tide-events { opacity: .7; }
+
+/* ลายทแยงบาง ๆ ทับกราฟและวงคะแนน = ธงสากลว่า "ยังไม่ใช่ของจริง"
+   ⚠️ ห้ามใส่ .sample-veil บนตัว grid โดยตรง — ::before จะกลายเป็นช่องหนึ่งของ grid
+   จึงต้องครอบด้วย .calendar-grid-wrap ก่อน */
+.sample-veil { position: relative; }
+
+.sample-veil::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  z-index: 2;
+  border-radius: 10px;
+  pointer-events: none;
+  background: repeating-linear-gradient(135deg,
+    rgba(255, 255, 255, .06) 0 5px, transparent 5px 13px);
+}
+
+/* ═══ สถานะสามแบบ: กำลังโหลด / ผิดพลาด / ไม่มีข้อมูล ═══════════════════
+   ทุกส่วนใช้กล่องหน้าตาเดียวกัน ผู้ใช้จึงเรียนรู้ครั้งเดียวใช้ได้ทั้งหน้า */
+.state-slot[hidden] { display: none; }
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 13px;
+  padding: 13px 14px;
+  border: 1px solid var(--glass-line);
+  border-top-color: var(--glass-line-top);
+  border-radius: 12px;
+  background-color: var(--glass-bg);
+}
+
+.state-copy { min-width: 0; }
+
+.state-copy b {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.state-copy small {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.state-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, .08);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.state-error { border-left: 2px solid var(--orange); }
+.state-error .state-icon { color: var(--orange); }
+.state-empty .state-icon { color: var(--aqua); }
+
+.state-retry {
+  flex: none;
+  margin-left: auto;
+  padding: 7px 12px;
+  border: 1px solid var(--glass-line);
+  border-top-color: var(--glass-line-top);
+  border-radius: 9px;
+  background-color: rgba(255, 255, 255, .06);
+  color: var(--aqua);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.state-spinner {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .14);
+  border-top-color: var(--aqua);
+  animation: stateSpin 900ms linear infinite;
+}
+
+@keyframes stateSpin { to { transform: rotate(360deg); } }
+
+/* กล่องสถานะของสภาพอากาศคั่นระหว่างแถวตัวเลขกับแผงถัดไป จึงดันระยะล่างแทน */
+#weatherState .state { margin: 0 0 18px; }
+
+/* ═══ บรรทัดที่มาของข้อมูล ═════════════════════════════════════════════
+   สัญญา API บังคับให้ meta ติดไปกับข้อมูลเสมอ จึงต้องโผล่ให้ผู้ใช้เห็น */
+.source-note {
+  margin: 13px 0 0;
+  font-size: 10px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.source-note[hidden] { display: none; }
+.source-note a { color: var(--aqua); }
+
+/* ═══ พยากรณ์รายชั่วโมง ════════════════════════════════════════════════
+   สัญญาส่งมา 24 ชั่วโมง ของเดิมตรึงไว้ 8 ช่องและตั้ง min-width:520px
+   ซึ่งดันจอ 390px จนล้นแนวนอน เปลี่ยนเป็นเลื่อนในกล่องตัวเองแทน */
+.forecast-scroll {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(74px, 1fr);
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.forecast-scroll[hidden] { display: none; }
+
+/* ═══ ช่วง Major บนหัวเรื่อง ════════════════════════════════════════════ */
+.major-window { max-width: 100%; }
+.major-window b { line-height: 1.4; }
+.major-window.is-unknown .pulse {
+  background-color: var(--muted);
+  box-shadow: none;
+}
+
+/* ดวงจันทร์ตอนยังไม่มีข้อมูล — จางและไร้สี ไม่ให้อ่านเป็นเฟสจริง */
+.moon.is-unknown {
+  opacity: .28;
+  filter: grayscale(1);
+}
+
+/* ═══ รายการหมายตกปลา ═════════════════════════════════════════════════ */
+.spot-slot { min-width: 0; }
+.spot-slot > .state { height: 100%; margin: 0; }
+.spot-items { display: grid; gap: 12px; }
+
+.spot-item { padding: 18px; }
+
+.spot-item h3 {
+  margin: 6px 0 0;
+  font-size: 17px;
+  line-height: 1.35;
+  letter-spacing: -.4px;
+}
+
+.spot-meta {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.spot-coords {
+  margin: 5px 0 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--aqua);
+}
+
+.spot-depth {
+  margin: 11px 0 0;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* คำเตือนความลึกต้องติดไปกับค่าความลึกทุกครั้ง ห้ามซ่อน */
+.spot-depth small {
+  display: block;
+  margin-top: 4px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: var(--orange);
+}
+
+.spot-item .choose-spot {
+  margin-top: 13px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--aqua);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.spot-item .choose-spot:hover { background-color: transparent; }
+
+/* ═══ อุปกรณ์แนะนำ ════════════════════════════════════════════════════ */
+.gear-hint {
+  margin: 14px 0 0;
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.gear-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.gear-styles { display: flex; gap: 8px; }
+
+.gear-style {
+  padding: 10px 15px;
+  border-radius: 10px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.gear-style.selected {
+  border-color: var(--aqua);
+  color: var(--aqua);
+}
+
+.gear-depth {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.gear-depth label {
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.gear-depth input {
+  width: 160px;
+  max-width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--glass-line);
+  border-top-color: var(--glass-line-top);
+  border-radius: 10px;
+  background-color: var(--glass-bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.gear-depth input:focus-visible {
+  outline: 2px solid var(--aqua);
+  outline-offset: 1px;
+}
+
+.gear-submit {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background-color: var(--lime);
+  color: var(--nav);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.gear-submit:hover { background-color: var(--lime); }
+
+.gear-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 11px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gear-list[hidden] { display: none; }
+
+.gear-item { padding: 15px; }
+
+.gear-range {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  line-height: 1.45;
+  text-transform: uppercase;
+  color: var(--aqua);
+}
+
+.gear-item dl {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 5px 10px;
+  margin: 0;
+}
+
+.gear-item dt {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.gear-item dd {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.gear-safety {
+  display: flex;
+  gap: 6px;
+  margin: 11px 0 0;
+  font-size: 10px;
+  line-height: 1.55;
+  color: var(--orange);
+}
+
+/* ═══ ตัวเลือกหมายในกล่องวางแผน ═══════════════════════════════════════ */
+.spot-picker[hidden] { display: none; }
+
 /* ═══ เคารพการตั้งค่าลดการเคลื่อนไหว ══════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   .rise,
   .page-in,
-  .aurora-bg { animation: none; }
+  .aurora-bg,
+  .state-spinner { animation: none; }
   .press:active { transform: none; }
   .spot::after { display: none; }
 }
