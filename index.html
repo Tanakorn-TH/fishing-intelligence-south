@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#061a27" />
     <title>คลื่นดี | Fishing Intelligence South</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Jost:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="preload" href="fonts/notosansthai-thai-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="fonts/jost-latin-500.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="fonts.css" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="design.css" />
   </head>
@@ -92,6 +92,12 @@
           <article class="spot-card glass spot rise" style="--i:9"><div class="spot-image"><img src="https://images.unsplash.com/photo-1544550285-f813152fb2fd?auto=format&fit=crop&w=900&q=80" alt="เรือประมงในทะเลภาคใต้" /><span>ใกล้คุณ</span></div><div class="spot-content"><p class="eyebrow">FISHING SPOT</p><h2>อ่าวปัตตานี</h2><p>น้ำเดินดี เหมาะตกปลากะพงและปลาเก๋า</p><div><b>4.8 <small>★</small></b><button class="choose-spot press">เลือกหมาย <span>→</span></button></div></div></article>
           <article id="log" class="catch-cta glass spot rise" style="--i:10"><div><p class="eyebrow">CATCH LOG</p><h2>ได้ปลาแล้วหรือยัง?</h2><p>บันทึกทริปนี้ไว้ดูสถิติและช่วยให้ชุมชนหาหมายดีขึ้น</p><button id="logCatch" class="press">+ บันทึกปลา</button></div><div class="fish-illustration" aria-hidden="true">⌁<span>◖</span></div></article>
         </section>
+
+        <footer class="site-footer rise" style="--i:11">
+          <p class="footer-brand">YRU FISHING <span class="footer-sep">•</span> <span id="appVersion">v0.3.1</span></p>
+          <p>Designed &amp; Developed with <svg class="footer-heart" viewBox="0 0 24 24" role="img" aria-label="ความรัก"><path d="M12 21s-8.5-5.6-8.5-11A4.8 4.8 0 0 1 12 7a4.8 4.8 0 0 1 8.5 3c0 5.4-8.5 11-8.5 11z"/></svg> by YRU FISHING TEAM</p>
+          <p class="footer-legal">© 2026 YRU FISHING TEAM. All rights reserved.</p>
+        </footer>
       </main>
     </div>
     <div class="toast" id="toast" role="status">เปิดฟอร์มบันทึกปลาแล้ว</div>
