@@ -397,6 +397,45 @@ body {
   width: 18px;
 }
 
+/* ═══ ท้ายหน้า ════════════════════════════════════════════════════════
+   ไม่ใส่กระจกให้ — ท้ายหน้าควรจบเงียบ ๆ ถ้าทำเป็นแผ่นลอยอีกใบจะแย่งสายตา
+   กับการ์ดข้อมูลข้างบนที่เป็นเนื้อหาจริง */
+.site-footer {
+  margin-top: 34px;
+  padding: 26px 0 8px;
+  border-top: 1px solid var(--glass-line);
+  text-align: center;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.7;
+}
+
+.site-footer p { margin: 0; }
+
+.footer-brand {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 1.4px;
+  color: #9ec3c6;
+  text-transform: uppercase;
+}
+
+.footer-sep { color: var(--aqua); padding: 0 2px; }
+
+/* เลขเวอร์ชันเขียน v ตัวเล็กตามธรรมเนียม semver — กันไม่ให้ uppercase ข้างบนแปลงเป็น V */
+#appVersion { text-transform: none; }
+
+/* หัวใจแทนคำว่า love — ใช้ orange ของพาเลตต์เดิม ไม่เพิ่มสีแดงเข้ามาใหม่ */
+.footer-heart {
+  width: 12px;
+  height: 12px;
+  fill: var(--orange);
+  vertical-align: -1px;
+  margin: 0 1px;
+}
+
+.footer-legal { font-size: 10.5px; color: #6f9298; }
+
 /* ═══ เคารพการตั้งค่าลดการเคลื่อนไหว ══════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   .rise,

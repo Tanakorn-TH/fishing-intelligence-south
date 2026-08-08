@@ -2,6 +2,11 @@
    Prototype interactions. คะแนนรายวันยังเป็นชุดข้อมูลตัวอย่าง
    จนกว่า backend จะคำนวณจากน้ำ Solunar ลม คลื่น และชั้นความลึกจริง */
 
+/* เลขเวอร์ชัน — ที่นี่ที่เดียวเป็นแหล่งความจริง
+   ปล่อยรุ่น = แก้เลขนี้ + สร้าง git tag ชื่อเดียวกัน (vX.Y.Z) แล้ว push tags
+   ค่าใน index.html เป็นแค่ตัวสำรองตอน JS ยังไม่ทำงาน ต้องตรงกับค่านี้เสมอ */
+const APP_VERSION = '0.3.1';
+
 const TH_DAY_ABBR = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 const TH_MONTH_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -41,6 +46,8 @@ function scoreReason(score) {
 /* วันที่บนแถบบน */
 const now = new Date();
 document.getElementById('todayLabel').textContent = formatThaiDate(now);
+
+document.getElementById('appVersion').textContent = `v${APP_VERSION}`;
 
 /* บันทึกปลา — สคีมาผูก catch_logs กับ trip_plans เสมอ จึงต้องมีทริปก่อน */
 let savedTrip = null;
