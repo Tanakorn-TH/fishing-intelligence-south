@@ -1,0 +1,256 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   คลื่นดี — ชั้นระบบดีไซน์
+   ลอกภาษาการออกแบบมาจาก ite-avm (Apple liquid-glass) โดย "ไม่เปลี่ยนสี"
+   พาเลตต์ทะเลเดิมใน styles.css ยังเป็นแหล่งความจริงของสีทั้งหมด
+
+   โหลดต่อจาก styles.css จึงเขียนทับได้โดยไม่ต้องแก้ไฟล์ที่ถูก minify ไว้
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── ขอบไล่แสง ────────────────────────────────────────────────────────
+     แสงเข้ามุมซ้ายบนสว่างสุด ทิศเดียวกันทั้งเว็บ ไม่งั้นการ์ดแต่ละใบ
+     จะดูเหมือนมีดวงไฟคนละดวง (ค่าฝั่ง dark ของ ite-avm ที่ผู้ใช้เคาะแล้ว) */
+  --edge: linear-gradient(135deg,
+      rgba(255, 255, 255, .22) 0%,
+      rgba(255, 255, 255, .02) 50%,
+      rgba(255, 255, 255, .11) 100%);
+
+  /* ── เงา ──────────────────────────────────────────────────────────────
+     บางและตกตรงลงตามวัตถุ ไม่ฟุ้งกว้าง */
+  --e1: 0 1px 2px rgba(0, 0, 0, .5);
+  --e2: 0 3px 10px rgba(0, 0, 0, .55);
+  --e3: 0 8px 26px rgba(0, 0, 0, .62);
+  --glass-shadow: 0 3px 10px rgba(0, 0, 0, .4);
+
+  /* ── พื้นการ์ดฝ้า ─────────────────────────────────────────────────────
+     อิงสี --panel เดิม แค่ลดความทึบให้เห็นพื้นหลังผ่าน */
+  --glass-bg: rgba(13, 44, 61, .62);
+
+  /* ── ฟอนต์ตัวเลข ──────────────────────────────────────────────────────
+     Jost มี tabular figures ทุกหลักกว้างเท่ากัน เลขที่เปลี่ยนค่าจึงไม่
+     กระตุกซ้าย-ขวา · DM Mono ยังใช้กับ "ป้ายกำกับ" ต่อไปตามเดิม */
+  --font-num: 'Jost', 'Noto Sans Thai', ui-sans-serif, system-ui, sans-serif;
+
+  /* สีของแสงที่วิ่งตามเคอร์เซอร์ — ใช้ aqua เดิมของโปรเจค */
+  --spot-ink: rgba(64, 222, 210, .55);
+}
+
+/* ═══ grain ═══════════════════════════════════════════════════════════
+   ฟิล์มเกรนบาง 5% ทับพื้นทั้งเว็บ ทำให้พื้นเรียบ ๆ ไม่ดูเป็นพลาสติก
+   วางเป็นเลเยอร์แรก ตามด้วยกราเดียนเดิมของ body ที่ styles.css ตั้งไว้ */
+body {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 60% 42% at 60% -15%, #144554 0%, transparent 80%);
+  background-repeat: repeat, no-repeat;
+  background-attachment: fixed, fixed;
+}
+
+/* ═══ ขอบเรืองและการ์ดฝ้า ═════════════════════════════════════════════
+   ไม่ใช้เส้นขอบคม แต่วาดแถบกราเดียนหนา 1px ที่ขอบในแล้วเบลอให้ฟุ้ง
+   mask xor = วาดเต็มกล่องแล้วเจาะไส้ในออก เหลือแต่กรอบ (รักษามุมมน) */
+.edge,
+.glass {
+  position: relative;
+}
+
+.edge::before,
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter: blur(3.5px);
+  opacity: .5;
+  pointer-events: none;
+}
+
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  /* แสงเรืองในมุมซ้ายบน 5% เข้าทางเดียวกับขอบ + เงาใต้การ์ดนิดเดียว */
+  box-shadow: inset 2px 2px 8px rgba(255, 255, 255, .05), var(--glass-shadow);
+}
+
+/* เบราว์เซอร์ที่ไม่รองรับ backdrop-filter ให้พื้นทึบขึ้นจะได้ยังอ่านออก */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: var(--panel2); }
+}
+
+/* ═══ กดได้ ═══════════════════════════════════════════════════════════
+   ⚠️ ไฟล์นี้โหลดหลัง styles.css จึงชนะเสมอ — คลาสที่ตั้ง position ต้องกัน
+   ไม่ให้ไปทับ absolute/fixed ที่คนอื่นใส่มาคู่กัน (บทเรียนจาก ite-avm
+   ที่ .liquid เคยทำแท่งเวลาบนปฏิทินวางผิดตำแหน่งจนหาบั๊กไม่เจอหลายรอบ) */
+.liquid:not(.is-absolute):not(.is-fixed) {
+  position: relative;
+}
+
+.liquid {
+  transition: transform .2s cubic-bezier(.22, 1, .36, 1), box-shadow .2s ease, filter .2s ease;
+}
+
+.liquid:hover { filter: brightness(1.03); }
+.liquid:active { transform: scale(.95); }
+
+/* ═══ ทยอยโผล่ ════════════════════════════════════════════════════════
+   ใส่ .rise ที่ลูกแล้วกำหนด --i เป็นลำดับ หน่วงทีละ 45ms
+   เลื่อนอย่างเดียวไม่ scale เพราะ scale ทำให้ตัวอักษรไทยเบลอตอนวิ่ง */
+.rise {
+  animation: riseUp 420ms cubic-bezier(.22, 1, .36, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes riseUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ═══ เข้าหน้าใหม่ ════════════════════════════════════════════════════
+   จางเข้าอย่างเดียว ไม่เลื่อน เพราะ .rise ของแต่ละบล็อกเลื่อนอยู่แล้ว
+   ถ้าเลื่อนสองชั้นจะรู้สึกว่าหน้ากระตุกสองจังหวะ */
+.page-in { animation: pageIn 300ms ease-out both; }
+
+@keyframes pageIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ═══ ขอบเรืองตามเคอร์เซอร์ ═══════════════════════════════════════════
+   ตำแหน่งมาจาก --mx/--my ที่ app.js เขียนให้ตอน pointermove
+   จอสัมผัสไม่มีเคอร์เซอร์ app.js จึงไม่ผูก listener เลย ไม่เปลืองแรงเครื่อง
+   รัศมีต้องกว้างกว่าครึ่งการ์ด ไม่งั้นชี้กลางใบแล้วขอบอยู่นอกวง ไม่ติดไฟ */
+.spot { position: relative; }
+
+.spot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(22rem circle at var(--mx, 50%) var(--my, 0px), var(--spot-ink), transparent 72%);
+  filter: blur(2px);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity .28s ease;
+  pointer-events: none;
+}
+
+.spot:hover::after { opacity: 1; }
+
+/* ═══ แสงใต้พื้น ══════════════════════════════════════════════════════
+   ชั้นกราเดียนนุ่ม ๆ ใต้ทุกอย่าง เลื่อนช้ามาก ใช้สีเดิมของโปรเจคล้วน */
+.aurora-bg {
+  position: fixed;
+  inset: -20%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38vmax 38vmax at 12% 8%, rgba(64, 222, 210, .07), transparent 60%),
+    radial-gradient(34vmax 34vmax at 88% 20%, rgba(200, 235, 105, .05), transparent 60%),
+    radial-gradient(40vmax 40vmax at 62% 104%, rgba(255, 185, 87, .045), transparent 62%);
+  filter: blur(28px);
+  animation: auroraDrift 32s ease-in-out infinite alternate;
+}
+
+@keyframes auroraDrift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); }
+  to   { transform: translate3d(2%, 2%, 0) scale(1.06); }
+}
+
+/* ═══ ตัวอักษร ════════════════════════════════════════════════════════
+   ภาษาไทยมีสระบน-ล่างและวรรณยุกต์ซ้อนกันได้ถึงสามชั้น
+   line-height ต่ำกว่า 1.28 เมื่อไหร่ วรรณยุกต์บรรทัดล่างจะชนสระบรรทัดบน
+   ของเดิมตั้งพาดหัวไว้ 1.18 ซึ่งชนจริงเมื่อข้อความขึ้นสองบรรทัด */
+.hero-copy h1 { line-height: 1.3; }
+
+/* ═══ ตัวเลข ══════════════════════════════════════════════════════════
+   ทุกจุดที่ตัวเลขยืนเดี่ยวเป็นพระเอกของการ์ด ใช้ Jost + tabular-nums
+   ป้ายกำกับและเวลายังเป็น DM Mono ตามเดิม เพราะทำหน้าที่คนละอย่าง */
+.score-number b,
+.current-height,
+.metric b,
+.day b,
+.day span,
+.hour strong,
+.tide-events b,
+.tide-events strong,
+.time-block strong,
+.spot-content b {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Jost เป็นฟอนต์เรขาคณิต ตัวเลขจึงดูโปร่งกว่า DM Mono ที่ระยะเท่ากัน
+   ชดเชยด้วยน้ำหนักและระยะห่างเล็กน้อย ไม่ให้ดูบางลงกว่าเดิม */
+.score-number b { font-weight: 500; letter-spacing: -.035em; }
+.current-height { font-weight: 500; }
+.metric b { font-weight: 500; }
+
+/* ═══ ปรับการ์ดเดิมให้เข้าชุด ═════════════════════════════════════════
+   ของเดิมใช้เส้นขอบทึบ 1px ซึ่งชนกับขอบเรืองของ .edge จะเห็นเป็นสองเส้น
+   จึงถอดเส้นทึบออกเฉพาะใบที่รับ .edge/.glass ไปแล้ว */
+.panel.glass,
+.metric.edge,
+.spot-card.edge,
+.catch-cta.edge,
+.score-card.edge {
+  border-color: transparent;
+}
+
+/* การ์ดคะแนนมีกราเดียนของตัวเองอยู่แล้ว ให้ .glass เสริมแค่ขอบกับเงา
+   ไม่ต้องเบลอพื้นหลังทับ ไม่งั้นกราเดียนเดิมจะจางหาย */
+.score-card.glass {
+  background: linear-gradient(145deg, #113d4a, #0a2c3a 70%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ปฏิทิน — แต่ละวันเป็นปุ่มกดได้ ให้มีจังหวะยุบเหมือนปุ่มอื่นทั้งเว็บ
+   แต่ไม่ใส่ .edge เพราะ 31 ใบเรียงติดกัน ขอบฟุ้งจะกลายเป็นตาราง */
+.day.liquid:active { transform: scale(.94); }
+
+/* ═══ แท่งกราฟรายชั่วโมง ══════════════════════════════════════════════
+   เดิมแท่งเป็น absolute สูงเป็น % ของกล่อง 155px พอลมแรง 70% = 108px
+   มันพุ่งขึ้นไปทับเลขอุณหภูมิกับความเร็วลม (เห็นชัดช่วง 11:00-13:00)
+   แก้โดยให้แท่งมี "ราง" สูงคงที่ของตัวเอง เปอร์เซ็นต์จึงอิงรางไม่ใช่ทั้งกล่อง
+   สัดส่วนระหว่างแท่งยังถูกต้องเหมือนเดิมทุกประการ */
+.hour { padding-bottom: 62px; }
+
+.hour .bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.hour .bar i {
+  position: static;
+  width: 18px;
+}
+
+/* ═══ เคารพการตั้งค่าลดการเคลื่อนไหว ══════════════════════════════════
+   ทุกอย่างที่ขยับต้องหยุดพร้อมกัน ไม่ใช่หยุดบางอัน */
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .page-in { animation: none; }
+  .aurora-bg { animation: none; }
+  .liquid:active,
+  .day.liquid:active { transform: none; }
+  .spot::after { display: none; }
+}

@@ -57,7 +57,7 @@ echo "ผ่านครบ"
 # ---------- 3. รายการไฟล์ ----------
 # ประกาศชัดเจนทีละไฟล์ ไม่กวาดทั้งโฟลเดอร์
 # เพื่อไม่ให้ .git .env tests scripts หรือไฟล์เอกสารหลุดขึ้น production
-ROOT_FILES=(index.html styles.css app.js)
+ROOT_FILES=(index.html styles.css design.css app.js)
 API_FILES=(api/spots.php api/gear.php api/health.php)
 LIB_FILES=(api/lib/config.php api/lib/db.php api/lib/http.php api/lib/.htaccess)
 
