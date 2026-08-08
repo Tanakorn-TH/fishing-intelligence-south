@@ -70,12 +70,16 @@
         <div class="state-slot" id="weatherState"></div>
 
         <section id="tide" class="content-grid">
-          <article class="panel tide-panel glass spot rise is-sample" style="--i:6">
-            <div class="panel-heading"><div><p class="eyebrow">TIDE</p><h2>น้ำขึ้นน้ำลงวันนี้</h2></div><span class="sample-badge"><span aria-hidden="true">▲</span> ข้อมูลตัวอย่าง</span></div>
-            <p class="sample-note">ยังไม่มีแหล่งข้อมูลน้ำขึ้นน้ำลงที่ตกลงกันได้ กราฟและเวลาทั้งหมดในกล่องนี้เป็นตัวอย่าง <b>ห้ามใช้วางแผนออกทะเล</b></p>
-            <div class="tide-status"><div><span class="status-water">≈</span><b>น้ำกำลังขึ้น</b><small>จนถึง 18:57 น.</small></div><span class="current-height">1.4 <small>m</small></span></div>
-            <div class="chart-wrap sample-veil"><div class="chart-label high">สูงสุด 2.3m</div><svg class="tide-chart" viewBox="0 0 700 165" preserveAspectRatio="none" role="img" aria-label="กราฟระดับน้ำขึ้นน้ำลง (ข้อมูลตัวอย่าง ไม่ใช่ค่าจริง)"><defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#37d9d1" stop-opacity=".42"/><stop offset="1" stop-color="#37d9d1" stop-opacity="0"/></linearGradient></defs><path class="area" d="M0,105 C35,100 58,40 110,42 C180,44 175,132 253,129 C326,126 310,20 398,25 C475,31 463,117 546,118 C615,119 620,62 700,55 L700,165 L0,165Z"/><path class="line" d="M0,105 C35,100 58,40 110,42 C180,44 175,132 253,129 C326,126 310,20 398,25 C475,31 463,117 546,118 C615,119 620,62 700,55"/><circle class="chart-point" cx="320" cy="78" r="6"/><line class="now-line" x1="320" x2="320" y1="0" y2="165"/></svg><div class="chart-times"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
-            <div class="tide-events"><div><span class="event-icon up">↑</span><p><small>น้ำขึ้น</small><b>06:25</b></p><strong>2.1m</strong></div><div><span class="event-icon down">↓</span><p><small>น้ำลง</small><b>12:43</b></p><strong>0.4m</strong></div><div><span class="event-icon up">↑</span><p><small>น้ำขึ้น</small><b>18:57</b></p><strong>2.3m</strong></div></div>
+          <article class="panel tide-panel glass spot rise" style="--i:6">
+            <div class="panel-heading"><div><p class="eyebrow">TIDE</p><h2>น้ำขึ้นน้ำลงวันนี้</h2></div><span class="datum-badge" id="tideDatumBadge" hidden><span aria-hidden="true">⚑</span> อ้างอิง MSL</span></div>
+            <p class="datum-note" id="tideNotice" hidden></p>
+            <div class="state-slot" id="tideState"></div>
+            <div id="tideBody" hidden>
+              <div class="tide-status"><div><span class="status-water">≈</span><b id="tideTrend">—</b><small id="tideTrendNote">—</small></div><span class="current-height" id="tideHeight">—</span></div>
+              <div class="chart-wrap"><div class="chart-label high" id="tideChartLabel">—</div><svg class="tide-chart" viewBox="0 0 700 165" preserveAspectRatio="none" role="img" aria-labelledby="tideChartDesc"><title id="tideChartDesc">กราฟระดับน้ำรายชั่วโมงของวันนี้ เทียบระดับน้ำทะเลปานกลาง</title><defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#37d9d1" stop-opacity=".42"/><stop offset="1" stop-color="#37d9d1" stop-opacity="0"/></linearGradient></defs><path class="area" id="tideArea" d=""/><path class="line" id="tideLine" d=""/><circle class="chart-point" id="tideNowPoint" cx="0" cy="0" r="6" hidden="hidden"/><line class="now-line" id="tideNowLine" x1="0" x2="0" y1="0" y2="165" hidden="hidden"/></svg><div class="chart-times"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
+              <div class="tide-events" id="tideEvents"></div>
+              <p class="source-note" id="tideSource" hidden></p>
+            </div>
           </article>
 
           <article id="moon" class="panel solunar-panel glass spot rise" style="--i:7">
