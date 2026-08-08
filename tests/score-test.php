@@ -69,6 +69,26 @@ function get(string $url): array
     return request($url, 'GET');
 }
 
+/**
+ * เรียกซ้ำเมื่อเจอ 502 ซึ่งแปลว่า "แหล่งข้อมูลภายนอกไม่ตอบ" ไม่ใช่ "โค้ดเราผิด"
+ *
+ * ใช้เฉพาะข้อทดสอบที่เจตนาคือเทียบพฤติกรรมของโค้ด ไม่ใช่เทียบความพร้อมของ Open-Meteo
+ * ชุดนี้ยิงปลายทางหลายสิบครั้งรวดเดียว บน CI จึงมีโอกาสโดนจำกัดอัตราการเรียกอยู่บ้าง
+ * ถ้าปล่อยให้ตกทันทีจะกลายเป็นเทสต์ที่ล้มสลับไปมาโดยไม่มีอะไรเสียจริง
+ * ซึ่งอันตรายกว่าไม่มีเทสต์ เพราะคนจะเริ่มเมินผลสีแดง
+ *
+ * ถ้าลองครบแล้วยัง 502 อยู่ ให้คืนคำตอบสุดท้ายไปตามจริง — ไม่กลบความล้มเหลวที่เกิดซ้ำ ๆ
+ */
+function getRetrying(string $url, int $attempts = 3): array
+{
+    $response = get($url);
+    for ($i = 1; $i < $attempts && $response['status'] === 502; $i++) {
+        sleep(3);
+        $response = get($url);
+    }
+    return $response;
+}
+
 function dayOffset(int $days): string
 {
     return (new DateTimeImmutable('today', new DateTimeZone('Asia/Bangkok')))
@@ -114,7 +134,7 @@ const DOC_WEIGHTS = [
 
 echo "ทดสอบกับ {$base}\n\n=== โครงสร้างคำตอบ ===\n";
 
-$r = get($base . '/api/score.php?' . PATTANI);
+$r = getRetrying($base . '/api/score.php?' . PATTANI);
 check('ตอบ 200', $r['status'] === 200, "ได้ {$r['status']} body=" . substr($r['body'], 0, 200));
 check('เป็น JSON ที่ parse ได้', is_array($r['json']), substr($r['body'], 0, 160));
 check('Content-Type เป็น application/json; charset=utf-8',
@@ -397,8 +417,10 @@ if (is_numeric($wind)) {
 echo "\n=== คะแนนตอบสนองต่อสภาพจริง ไม่ใช่ค่าคงที่ ===\n";
 
 // จุดที่สภาพต่างกันมากต้องได้คะแนนต่างกัน ถ้าเท่ากันเป๊ะแปลว่าไม่ได้คิดจากข้อมูลจริง
-$other = get($base . '/api/score.php?lat=7.9&lon=98.35'); // ภูเก็ต ฝั่งอันดามัน
-check('พิกัดอื่นยังตอบ 200', $other['status'] === 200, "ได้ {$other['status']}");
+// ใช้ตัวเรียกซ้ำเพราะข้อนี้ถามว่า "โค้ดคิดจากข้อมูลจริงไหม" ไม่ได้ถามว่า Open-Meteo ล่มหรือเปล่า
+$other = getRetrying($base . '/api/score.php?lat=7.9&lon=98.35'); // ภูเก็ต ฝั่งอันดามัน
+check('พิกัดอื่นยังตอบ 200', $other['status'] === 200,
+      "ได้ {$other['status']} (ลองซ้ำแล้ว 3 ครั้ง หากยัง 502 แปลว่าปลายทางมีปัญหาจริง)");
 if ($other['status'] === 200) {
     $otherFactors = $other['json']['data']['factors'] ?? [];
     $differs = false;
@@ -413,7 +435,7 @@ if ($other['status'] === 200) {
 }
 
 // วันอื่นประเมินที่เที่ยงวัน ไม่ใช่ "ตอนนี้"
-$future = get($base . '/api/score.php?' . PATTANI . '&date=' . dayOffset(2));
+$future = getRetrying($base . '/api/score.php?' . PATTANI . '&date=' . dayOffset(2));
 check('วันอื่นยังตอบ 200', $future['status'] === 200, "ได้ {$future['status']}");
 check('วันอื่นประเมินที่เที่ยงวัน (scope = midday)',
       ($future['json']['data']['evaluated_scope'] ?? '') === 'midday',
