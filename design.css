@@ -503,6 +503,267 @@ body {
     rgba(255, 255, 255, .06) 0 5px, transparent 5px 13px);
 }
 
+/* ═══ Fishing Score ════════════════════════════════════════════════════
+   คะแนนมาจากน้ำหนักที่ทีมเลือกเอง (ดู docs/fishing-score.md)
+   ปุ่ม "ที่มา" จึงไม่ใช่ของตกแต่ง แต่เป็นเงื่อนไขที่ทำให้ตัวเลขนี้แสดงได้ตามกติกา */
+.score-info {
+  border: 1px solid var(--glass-line);
+  background: rgba(255, 255, 255, .06);
+  color: #9dced0;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: .6px;
+  cursor: pointer;
+}
+
+.score-info:hover { color: #d8f5f3; }
+
+/* วงแหวนเดินตามคะแนนจริง จึงต้องเปลี่ยนแบบนุ่ม ไม่ใช่กระโดด */
+.score-orbit .progress { transition: stroke-dashoffset .6s ease; }
+
+/* บรรทัดความปลอดภัย — แยกจากคะแนนโดยเจตนา
+   คะแนน 70 กับ "ลมแรงเกินไปสำหรับเรือเล็ก" เป็นคนละคำถาม และคำถามหลังสำคัญกว่า
+   จึงใช้สีเตือนของตัวเองได้ ไม่ต้องกลมกลืนกับการ์ด */
+.score-safety {
+  margin: 10px 0 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-line);
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.score-safety[hidden] { display: none; }
+
+.score-safety.is-safe { color: #b8d9c4; }
+
+@supports (color: color-mix(in srgb, white 10%, transparent)) {
+  .score-safety.is-caution {
+    color: var(--orange);
+    border-color: color-mix(in srgb, var(--orange) 45%, transparent);
+    background-color: color-mix(in srgb, var(--orange) 12%, transparent);
+  }
+  /* ระดับอันตรายต้องเห็นชัดกว่าทุกอย่างในการ์ด รวมทั้งตัวเลขคะแนนเอง */
+  .score-safety.is-danger {
+    color: #ffd9d0;
+    border-color: color-mix(in srgb, var(--orange) 85%, #ff6b4a);
+    background-color: color-mix(in srgb, var(--orange) 26%, transparent);
+    font-weight: 700;
+  }
+}
+
+/* บรรทัดบอกว่าคะแนนรวมมาจากไหน — สูตรกลาง หรือการเลือกของผู้ใช้เอง
+   ต้องมีเสมอ ไม่งั้นคนที่ปรับน้ำหนักแล้วจะเข้าใจผิดว่าเป็นค่ามาตรฐาน */
+.score-custom {
+  margin: 6px 0 0;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  text-align: center;
+}
+
+.score-custom[hidden] { display: none; }
+
+/* แถบเครื่องมือของรายการงาน */
+.style-tools {
+  margin-top: 13px;
+  padding-top: 13px;
+  border-top: 1px solid var(--glass-line);
+}
+
+.style-hint {
+  margin: 0 0 8px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.style-actions { display: flex; gap: 6px; }
+
+.style-tool {
+  flex: 1;
+  border: 1px solid var(--glass-line);
+  background: rgba(255, 255, 255, .05);
+  color: #9dced0;
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  cursor: pointer;
+}
+
+.style-tool:hover { color: #d8f5f3; }
+
+/* รายการคะแนนแยกตามงานตกปลา — ลำดับในรายการคือน้ำหนัก */
+.style-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.style-row {
+  display: grid;
+  grid-template-columns: 30px 30px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .03);
+}
+
+/* งานที่ปิดไว้ยังต้องอ่านออก แค่ถอยไปอยู่ข้างหลัง ไม่ใช่หายไปจนหาไม่เจอ */
+.style-row.is-off { opacity: .45; }
+
+/* สวิตช์เปิด-ปิดว่าจะเอางานนี้มาคิดคะแนนรวมไหม */
+.style-switch {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.switch-track {
+  width: 26px;
+  height: 15px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+  border: 1px solid var(--glass-line);
+  display: block;
+  position: relative;
+  transition: background-color .18s ease;
+}
+
+.switch-track i {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #cfe3e6;
+  transition: transform .18s ease;
+}
+
+.style-switch[aria-checked="true"] .switch-track { background: rgba(64, 222, 210, .55); }
+.style-switch[aria-checked="true"] .switch-track i { transform: translateX(11px); }
+
+.style-score {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  text-align: right;
+  color: #e8f7f5;
+}
+
+/* น้ำหนักที่งานนี้มีต่อคะแนนรวม — ตัวเลขที่ทำให้ "ลำดับ = น้ำหนัก" จับต้องได้ */
+.style-weight {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--aqua);
+  min-width: 26px;
+  text-align: right;
+}
+
+.style-row.is-off .style-weight { color: var(--muted); }
+
+.style-move { display: flex; flex-direction: column; gap: 1px; }
+
+.style-move button {
+  border: 1px solid var(--glass-line);
+  background: rgba(255, 255, 255, .05);
+  color: #9dced0;
+  border-radius: 5px;
+  width: 20px;
+  height: 14px;
+  font-size: 8px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.style-move button:hover:not(:disabled) { color: #d8f5f3; }
+.style-move button:disabled { opacity: .3; cursor: default; }
+
+/* บนจอสัมผัส ปุ่มต้องกดโดนจริง — ผู้ใช้กลุ่มนี้อยู่บนเรือ มือเปียก เรือโคลง
+   ขยายพื้นที่กดโดยไม่เปลี่ยนขนาดที่มองเห็น เพื่อไม่ให้การ์ดยืดจนเสียสัดส่วน
+   (ตรวจด้วย pointer: coarse ไม่ใช่ความกว้างจอ เพราะแท็บเล็ตจอใหญ่ก็ใช้นิ้วเหมือนกัน) */
+@media (pointer: coarse) {
+  .style-row {
+    padding: 8px 6px;
+    grid-template-columns: 44px 30px 1fr auto auto;
+  }
+
+  .style-switch {
+    min-height: 44px;
+    margin: -8px 0;
+  }
+
+  .style-move { gap: 2px; }
+
+  .style-move button {
+    width: 30px;
+    height: 21px;
+    font-size: 10px;
+  }
+
+  .style-tool { padding: 9px 8px; }
+}
+
+/* ข้อความสำหรับโปรแกรมอ่านหน้าจอเท่านั้น — สวิตช์ต้องมีชื่อบอกว่าเป็นของงานไหน */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.style-score {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  text-align: right;
+  color: #e8f7f5;
+}
+
+.style-copy { min-width: 0; }
+.style-copy b { font-size: 11.5px; display: block; }
+
+/* บรรทัดปัจจัยยาวเกินการ์ดได้ง่าย ตัดด้วย ellipsis แทนที่จะดันความกว้างจนตาราง grid แตก */
+
+.style-copy small,
+.style-copy em {
+  display: block;
+  font-size: 9px;
+  font-style: normal;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* บรรทัดปัจจัย = ที่มาของคะแนนงานนั้น จางกว่าชื่องานแต่ยังอ่านออก */
+.style-copy em {
+  font-family: var(--font-mono);
+  opacity: .75;
+  margin-top: 1px;
+}
+
+.style-label {
+  font-size: 9.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 /* ═══ ป้ายบอก datum ของระดับน้ำ ════════════════════════════════════════
    คนละความหมายกับ .sample-badge — ตรงนี้ "เป็นข้อมูลจริง" แต่วัดจากฐานคนละอันกับ
    ตารางน้ำของกรมอุทกศาสตร์ ผู้ใช้จึงต้องรู้ก่อนเอาตัวเลขไปเทียบ

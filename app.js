@@ -1,10 +1,11 @@
 /* คลื่นดี — Fishing Intelligence South
    หน้าเว็บดึงข้อมูลจริงจาก api/ ตาม docs/api-contract.md
-   ส่วนที่ยังไม่มี backend (คะแนน ปฏิทินคะแนน) ยังเป็นชุดตัวอย่าง
+   ส่วนที่ยังไม่มี backend (ปฏิทินคะแนนรายเดือน) ยังเป็นชุดตัวอย่าง
    และถูกติดป้าย "ข้อมูลตัวอย่าง" ไว้ใน index.html ทุกจุด — ห้ามถอดป้ายออกจนกว่าจะมีข้อมูลจริง
 
-   น้ำขึ้นน้ำลงเป็นข้อมูลจริงแล้ว แต่มีเงื่อนไขเรื่อง datum ที่ต้องบอกผู้ใช้เสมอ
-   ดูคำอธิบายเหนือ loadTides() ก่อนแก้ส่วนนั้น */
+   สองส่วนนี้เป็นข้อมูลจริงแล้ว แต่มีเงื่อนไขที่ต้องบอกผู้ใช้เสมอ อ่านก่อนแก้:
+   - น้ำขึ้นน้ำลง: อ้างอิง datum คนละฐานกับตารางน้ำทางการ (ดูคำอธิบายเหนือ loadTides)
+   - Fishing Score: น้ำหนักทีมเลือกเอง ไม่ได้ปรับจากสถิติการจับปลาจริง (ดูเหนือ loadScore) */
 
 /* เลขเวอร์ชัน — ที่นี่ที่เดียวเป็นแหล่งความจริง
    ปล่อยรุ่น = แก้เลขนี้ + สร้าง git tag ชื่อเดียวกัน (vX.Y.Z) แล้ว push tags
@@ -513,6 +514,303 @@ async function loadSolunar() {
 }
 retryActions.solunar = loadSolunar;
 
+/* ═══ Fishing Score — GET /api/score.php ═══════════════════════════════
+   คะแนนนี้มาจากน้ำหนักที่ทีมเลือกเอง ไม่ได้ปรับจากสถิติการจับปลาจริง
+   ที่มาทั้งหมดอยู่ใน docs/fishing-score.md และ API ส่ง breakdown รายปัจจัยมาให้
+   จึงต้องเปิดให้ผู้ใช้กดดูได้เสมอ — ตัวเลขที่กดดูที่มาไม่ได้คือตัวเลขที่เชื่อไม่ได้ */
+
+/* เส้นรอบวงของวงกลมรัศมี 82 ใน viewBox 200x200 — ต้องตรงกับ stroke-dasharray ใน styles.css */
+const SCORE_RING_CIRCUMFERENCE = 515;
+
+function safetyToneClass(level) {
+  if (level === 'dangerous') return 'is-danger';
+  if (level === 'caution') return 'is-caution';
+  return 'is-safe';
+}
+
+/* ── การปรับแต่งของผู้ใช้ ──────────────────────────────────────────────
+   ลำดับในรายการ = น้ำหนัก (บนสุดมากสุด) และสวิตช์ = เอามาคิดหรือไม่
+   เก็บลง localStorage เพราะเป็นความชอบส่วนตัวของคนใช้เครื่องนั้น ไม่ใช่ข้อมูลของระบบ
+   ถ้าเก็บไม่ได้ (โหมดส่วนตัว/ปิดไว้) ให้ทำงานต่อด้วยค่าเริ่มต้น ห้ามพังทั้งการ์ด */
+const SCORE_PREFS_KEY = 'fis.score.prefs.v1';
+
+let scorePayload = null;   // คำตอบล่าสุดจาก API เก็บไว้คิดใหม่ตอนผู้ใช้ปรับ
+let scorePrefs = null;     // { order: [key], off: [key] }
+
+function readScorePrefs() {
+  try {
+    const raw = window.localStorage.getItem(SCORE_PREFS_KEY);
+    if (!raw) return { order: [], off: [] };
+    const parsed = JSON.parse(raw);
+    return {
+      order: Array.isArray(parsed.order) ? parsed.order.map(String) : [],
+      off: Array.isArray(parsed.off) ? parsed.off.map(String) : [],
+    };
+  } catch (error) {
+    return { order: [], off: [] };
+  }
+}
+
+function saveScorePrefs() {
+  try {
+    window.localStorage.setItem(SCORE_PREFS_KEY, JSON.stringify(scorePrefs));
+  } catch (error) {
+    /* เก็บไม่ได้ก็ยังใช้งานได้ในรอบนี้ แค่ไม่จำข้ามรอบ ไม่ต้องรบกวนผู้ใช้ */
+  }
+}
+
+/* เรียงงานตามลำดับที่ผู้ใช้ตั้งไว้ งานที่ API เพิ่มมาใหม่และยังไม่มีในลำดับให้ต่อท้าย
+   (กันกรณี backend เพิ่มประเภทงานแล้วของที่เก็บไว้เดิมทำให้งานใหม่หายไปเงียบ ๆ) */
+function orderedStyles() {
+  const styles = (scorePayload && scorePayload.data && scorePayload.data.styles) || [];
+  const byKey = new Map(styles.map((style) => [style.key, style]));
+  const result = [];
+
+  scorePrefs.order.forEach((key) => {
+    if (byKey.has(key)) {
+      result.push(byKey.get(key));
+      byKey.delete(key);
+    }
+  });
+  byKey.forEach((style) => result.push(style));
+  return result;
+}
+
+function isStyleOn(key) {
+  return !scorePrefs.off.includes(key);
+}
+
+/* น้ำหนักตามลำดับ: อันดับ i จาก n อันที่เปิดอยู่ ได้น้ำหนัก (n-i)/(1+2+…+n)
+   เป็นการลดหลั่นเชิงเส้น — บนสุดได้ 2/(n+1) ของทั้งหมด ซึ่งเห็นความต่างชัดโดยไม่สุดโต่ง
+   เลือกแบบนี้เพราะอธิบายให้ผู้ใช้เข้าใจได้ในประโยคเดียว ไม่ต้องมีเลขวิเศษ */
+function rankWeights(count) {
+  const total = (count * (count + 1)) / 2;
+  return Array.from({ length: count }, (_, i) => (count - i) / total);
+}
+
+/* คิดคะแนนรวมจากงานที่ผู้ใช้เปิดไว้ ตามลำดับที่ผู้ใช้จัด
+   ถ้ายังไม่เคยปรับอะไรเลย จะคืน null เพื่อให้ใช้ค่า overall ของ API ตามสูตรในเอกสาร */
+function customOverall() {
+  const enabled = orderedStyles().filter((style) => isStyleOn(style.key));
+  if (!enabled.length) return null;
+
+  const weights = rankWeights(enabled.length);
+  const score = enabled.reduce((sum, style, i) => sum + weights[i] * style.score, 0);
+  return { score: Math.round(score), count: enabled.length, top: enabled[0] };
+}
+
+/* ผู้ใช้ยังไม่ได้แตะอะไร = ใช้สูตรกลางของ API (เฉลี่ย 3 งานที่ดีที่สุด) */
+function prefsAreDefault() {
+  return scorePrefs.order.length === 0 && scorePrefs.off.length === 0;
+}
+
+function styleRowMarkup(style, index, weightPct) {
+  /* แสดงแค่ 3 ปัจจัยแรก เพราะ API เรียงตามแต้มที่ได้จริงมาแล้ว
+     ผู้ใช้จึงเห็นตัวชี้ขาดของงานนั้นทันทีโดยไม่ต้องอ่านทั้งหมด */
+  const top = (style.breakdown || []).slice(0, 3)
+    .map((row) => `${escapeHtml(row.label)} ${Math.round(row.contribution)}`)
+    .join(' · ');
+
+  const on = isStyleOn(style.key);
+  const key = escapeHtml(style.key);
+
+  return `<li class="style-row${on ? '' : ' is-off'}" data-key="${key}">`
+    + `<button type="button" class="style-switch press" role="switch" aria-checked="${on ? 'true' : 'false'}"`
+    + ` data-action="toggle" data-key="${key}">`
+    + `<span class="switch-track" aria-hidden="true"><i></i></span>`
+    + `<span class="sr-only">${escapeHtml(style.name_th)}</span></button>`
+    + `<span class="style-score">${escapeHtml(String(style.score))}</span>`
+    + '<span class="style-copy">'
+    + `<b>${escapeHtml(style.name_th)}</b>`
+    + `<small>${escapeHtml(style.tagline || '')}</small>`
+    + (top ? `<em>${escapeHtml(top)}</em>` : '')
+    + '</span>'
+    + `<span class="style-weight">${on ? `${weightPct}%` : 'ปิด'}</span>`
+    + '<span class="style-move">'
+    + `<button type="button" class="press" data-action="up" data-key="${key}" aria-label="เลื่อน ${escapeHtml(style.name_th)} ขึ้น"${index === 0 ? ' disabled' : ''}>↑</button>`
+    + `<button type="button" class="press" data-action="down" data-key="${key}" aria-label="เลื่อน ${escapeHtml(style.name_th)} ลง">↓</button>`
+    + '</span>'
+    + '</li>';
+}
+
+/* วาดเฉพาะส่วนที่ขึ้นกับการปรับแต่ง เรียกซ้ำได้ทุกครั้งที่ผู้ใช้กดอะไร
+   โดยไม่ต้องยิง API ใหม่ เพราะคะแนนรายงานมาครบแล้ว เปลี่ยนแค่วิธีรวม */
+function renderScoreSelection() {
+  if (!scorePayload) return;
+
+  const data = scorePayload.data || {};
+  const styles = orderedStyles();
+  const custom = customOverall();
+  const useCustom = !prefsAreDefault() && custom !== null;
+
+  const apiOverall = data.overall || {};
+  const score = useCustom ? custom.score : (isFiniteNumber(apiOverall.score) ? apiOverall.score : 0);
+
+  document.getElementById('scoreValue').textContent = String(score);
+  document.getElementById('scoreLabel').textContent = scoreLabelFor(score);
+
+  /* วงแหวนเดินตามคะแนนจริง — dashoffset มาก = วงว่างมาก */
+  const ring = document.getElementById('scoreRing');
+  const offset = SCORE_RING_CIRCUMFERENCE * (1 - Math.min(100, Math.max(0, score)) / 100);
+  ring.style.strokeDashoffset = String(Math.round(offset));
+
+  /* บอกให้ชัดว่าคะแนนของ "วันไหน" และ "เหมาะกับงานอะไร"
+     งานที่แนะนำเลือกจากงานที่เปิดไว้เท่านั้น เพราะงานที่ผู้ใช้ปิดไปคือไม่สนใจ */
+  const enabled = styles.filter((style) => isStyleOn(style.key));
+  const best = enabled.slice().sort((a, b) => b.score - a.score)[0] || null;
+  const dayLabel = scoreDayLabel(data.date);
+
+  document.getElementById('scoreBest').textContent = best
+    ? `${dayLabel}เหมาะกับ ${best.name_th} ที่สุด ${best.score}/100`
+    : 'ยังไม่ได้เลือกงานที่จะนำมาคิด';
+
+  /* ถ้าผู้ใช้ปรับเอง ต้องบอกว่าคะแนนนี้ไม่ใช่สูตรกลางแล้ว ไม่งั้นจะเข้าใจผิดว่าเป็นค่ามาตรฐาน */
+  const customEl = document.getElementById('scoreCustom');
+  if (useCustom) {
+    customEl.hidden = false;
+    customEl.textContent = `คิดจาก ${custom.count} งานที่คุณเลือก ถ่วงตามลำดับที่จัดไว้`;
+  } else if (custom === null && !prefsAreDefault()) {
+    customEl.hidden = false;
+    customEl.textContent = 'ปิดทุกงานอยู่ จึงยังไม่มีคะแนนรวม เปิดอย่างน้อยหนึ่งงาน';
+  } else {
+    customEl.hidden = false;
+    customEl.textContent = 'คิดตามสูตรกลาง: เฉลี่ย 3 งานที่คะแนนสูงสุดของวันนี้';
+  }
+
+  const weights = rankWeights(Math.max(1, enabled.length));
+  let enabledIndex = 0;
+  document.getElementById('styleList').innerHTML = styles.map((style, index) => {
+    const pct = isStyleOn(style.key) ? Math.round(weights[enabledIndex++] * 100) : 0;
+    return styleRowMarkup(style, index, pct);
+  }).join('');
+}
+
+function scoreLabelFor(score) {
+  if (score >= 80) return 'ดีมาก';
+  if (score >= 65) return 'ดี';
+  if (score >= 50) return 'พอใช้';
+  return 'ไม่เด่น';
+}
+
+/* "วันนี้" เมื่อเป็นวันปัจจุบัน ไม่งั้นบอกวันที่ไปเลย ผู้ใช้จะได้ไม่สับสนว่ากำลังดูวันไหน */
+function scoreDayLabel(date) {
+  if (!date) return '';
+  if (date === isoDate(new Date())) return 'วันนี้';
+  const parts = String(date).split('-').map(Number);
+  if (parts.length !== 3) return `${date} `;
+  return `${formatThaiDate(new Date(parts[0], parts[1] - 1, parts[2]))} `;
+}
+
+function renderScore(payload) {
+  scorePayload = payload;
+  const data = payload.data || {};
+  const safety = data.safety || null;
+
+  renderState(document.getElementById('scoreState'), null);
+  document.getElementById('scoreBody').hidden = false;
+
+  /* ความปลอดภัยแยกจากคะแนนโดยเจตนา คะแนนสูงต้องไม่กลบคำเตือนว่าทะเลอันตราย
+     และผู้ใช้ปิดงานทิ้งก็ไม่ทำให้คำเตือนหายไป */
+  const safetyEl = document.getElementById('scoreSafety');
+  if (safety && safety.label) {
+    safetyEl.hidden = false;
+    safetyEl.className = `score-safety ${safetyToneClass(safety.level)}`;
+    const reasons = Array.isArray(safety.reasons) ? safety.reasons.join(' · ') : '';
+    safetyEl.textContent = `${safety.label}${reasons ? ` — ${reasons}` : ''}`;
+  } else {
+    safetyEl.hidden = true;
+  }
+
+  document.getElementById('scoreNotice').textContent = data.notice || '';
+  renderScoreSelection();
+}
+
+/* ── การโต้ตอบในรายการงาน ─────────────────────────────────────────────
+   ใช้ event delegation ตัวเดียว เพราะรายการถูกวาดใหม่ทุกครั้งที่มีการเปลี่ยนแปลง
+   ถ้าผูก listener รายปุ่มจะต้องผูกใหม่ทุกรอบและหลุดได้ง่าย */
+document.getElementById('styleList').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-action]');
+  if (!button || !scorePayload) return;
+
+  const { action, key } = button.dataset;
+  const keys = orderedStyles().map((style) => style.key);
+  const index = keys.indexOf(key);
+  if (index < 0) return;
+
+  if (action === 'toggle') {
+    scorePrefs.off = isStyleOn(key)
+      ? scorePrefs.off.concat([key])
+      : scorePrefs.off.filter((item) => item !== key);
+  } else if (action === 'up' && index > 0) {
+    [keys[index - 1], keys[index]] = [keys[index], keys[index - 1]];
+    scorePrefs.order = keys;
+  } else if (action === 'down' && index < keys.length - 1) {
+    [keys[index + 1], keys[index]] = [keys[index], keys[index + 1]];
+    scorePrefs.order = keys;
+  } else {
+    return;
+  }
+
+  // ลำดับต้องถูกบันทึกเสมอ ไม่งั้นการกดสวิตช์อย่างเดียวจะทำให้ลำดับกลับไปเป็นค่าเริ่มต้น
+  if (!scorePrefs.order.length) scorePrefs.order = keys;
+
+  saveScorePrefs();
+  renderScoreSelection();
+});
+
+/* เรียงตามคะแนนของวันนั้น — ทางลัดสำหรับคนที่อยากให้วันนี้เอางานที่มาแรงขึ้นก่อน */
+document.getElementById('styleSort').addEventListener('click', () => {
+  if (!scorePayload) return;
+  scorePrefs.order = orderedStyles()
+    .slice()
+    .sort((a, b) => b.score - a.score)
+    .map((style) => style.key);
+  saveScorePrefs();
+  renderScoreSelection();
+});
+
+document.getElementById('styleReset').addEventListener('click', () => {
+  scorePrefs = { order: [], off: [] };
+  saveScorePrefs();
+  renderScoreSelection();
+});
+
+async function loadScore() {
+  if (scorePrefs === null) scorePrefs = readScorePrefs();
+
+  const slot = document.getElementById('scoreState');
+  document.getElementById('scoreBody').hidden = true;
+  renderState(slot, { kind: 'loading', title: 'กำลังคิดคะแนนของวันนี้…' });
+
+  try {
+    const payload = await fetchJson('api/score.php', {
+      lat: activeLocation.lat,
+      lon: activeLocation.lon,
+      date: isoDate(new Date()),
+    });
+    renderScore(payload);
+  } catch (error) {
+    document.getElementById('scoreBody').hidden = true;
+    renderState(slot, {
+      kind: error.status === 400 ? 'empty' : 'error',
+      title: 'ยังคิดคะแนนให้ไม่ได้',
+      detail: error.message,
+      retry: 'score',
+    });
+  }
+}
+retryActions.score = loadScore;
+
+/* ปุ่ม "ที่มา" — พับรายละเอียดไว้ก่อนเพื่อไม่ให้การ์ดยาวเกิน แต่ต้องกดดูได้เสมอ */
+document.getElementById('scoreInfo').addEventListener('click', () => {
+  const detail = document.getElementById('scoreDetail');
+  const button = document.getElementById('scoreInfo');
+  const opening = detail.hidden;
+  detail.hidden = !opening;
+  button.setAttribute('aria-expanded', opening ? 'true' : 'false');
+  button.textContent = opening ? 'ซ่อน' : 'ที่มา';
+});
+
 /* ═══ น้ำขึ้นน้ำลง — GET /api/tides.php ════════════════════════════════
    ⚠️ ค่าที่ได้อ้างอิงระดับน้ำทะเลปานกลาง (MSL) ไม่ใช่ระดับน้ำลงต่ำสุดแบบตารางน้ำทางการ
    ตัวเลขความลึกจึงเทียบกับตารางของกรมอุทกศาสตร์ไม่ได้ สิ่งที่ใช้ได้คือ "จังหวะ" น้ำขึ้นน้ำลง
@@ -798,6 +1096,7 @@ function selectSpot(spotId, refresh = true) {
   loadWeather();
   loadSolunar();
   loadTides();
+  loadScore();
 
   if (spot.depth && isFiniteNumber(spot.depth.typical_m)) {
     document.getElementById('gearDepth').value = String(roundTo(spot.depth.typical_m, 1));
@@ -1074,5 +1373,6 @@ if (window.matchMedia('(pointer: fine)').matches
 loadWeather();
 loadSolunar();
 loadTides();
+loadScore();
 loadSpots();
 loadGear();
