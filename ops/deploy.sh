@@ -62,12 +62,12 @@ ROOT_FILES=(index.html styles.css design.css fonts.css app.js map.js)
 MAP_FILES=(map/coastline-south.json map/depth-south.json)
 API_FILES=(
   api/spots.php api/gear.php api/health.php
-  api/weather.php api/solunar.php api/tides.php api/score.php api/places.php
+  api/weather.php api/solunar.php api/tides.php api/score.php api/places.php api/outlook.php
 )
 LIB_FILES=(
   api/lib/config.php api/lib/db.php api/lib/http.php api/lib/.htaccess
   api/lib/astro.php api/lib/cache.php api/lib/remote.php api/lib/conditions.php
-  api/lib/places-data.php
+  api/lib/places-data.php api/lib/scoring.php
 )
 
 # ---------- 3ก. กันรายการตกหล่น ----------

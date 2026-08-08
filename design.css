@@ -1401,3 +1401,13 @@ body {
   .press:active { transform: none; }
   .spot::after { display: none; }
 }
+
+/* วันที่ยังคิดคะแนนไม่ได้ในปฏิทิน
+   ต้องอ่านออกว่า "ยังไม่รู้" ไม่ใช่ "คะแนนต่ำ" จึงไม่ใช้สีระดับใด ๆ เลย
+   ถ้าใส่สีเทาเข้มจะดูเหมือนคะแนนแย่ ซึ่งหลอกคนที่กำลังเลือกวันออกเรือ */
+.day.unknown {
+  background: rgba(255, 255, 255, .02);
+  color: var(--muted);
+}
+
+.day.unknown span { opacity: .5; }

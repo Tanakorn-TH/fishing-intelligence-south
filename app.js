@@ -16,14 +16,6 @@ const TH_DAY_ABBR = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.
 const TH_MONTH_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-/* ── ข้อมูลตัวอย่างที่ยังเหลืออยู่ ──────────────────────────────────────
-   ปฏิทินคะแนนยังไม่มี endpoint (ดูตาราง "สิ่งที่ยังไม่มี" ใน docs/api-contract.md)
-   ตรึงไว้ที่เดือนของชุดตัวอย่าง ปุ่มเลื่อนเดือนจึงยัง disabled อยู่
-   ทุกที่ที่แสดงตัวเลขชุดนี้ต้องมีป้าย .sample-badge กำกับเสมอ */
-const CALENDAR_YEAR = 2026;
-const CALENDAR_MONTH = 7; // 0-indexed = สิงหาคม
-const DAY_SCORES = [78, 65, 61, 42, 67, 74, 82, 91, 88, 79, 63, 69, 76, 80, 94, 89, 75, 68, 49, 64, 77, 83, 90, 73, 66, 45, 62, 76, 81, 87, 78];
-
 /* ── จุดอ้างอิงสำหรับคิวรีสภาพอากาศ ───────────────────────────────────
    ยังไม่มีหมายจริงในฐานข้อมูล (ตาราง fishing_spots ว่าง) จึงใช้พิกัดตัวอย่าง
    ชุดเดียวกับที่ระบุไว้ใน docs/api-contract.md เป็นจุดตั้งต้นของอ่าวปัตตานี
@@ -1613,7 +1605,18 @@ document.getElementById('showCalendar').addEventListener('click', () => {
   document.getElementById('selectedSpotLabel').textContent = selectedSpot.name;
   spotStep.hidden = true;
   calendarStep.hidden = false;
+  loadOutlook();
 });
+
+/* ── ปฏิทินคะแนน ───────────────────────────────────────────────────────
+   คะแนนมาจาก /api/outlook.php ซึ่งใช้สูตรเดียวกับการ์ดคะแนนบนหน้าแรก
+
+   ⚠️ คิดคะแนนล่วงหน้าได้แค่ราว 7-8 วัน เพราะแบบจำลองระดับน้ำพยากรณ์ได้เท่านั้น
+   วันที่เลยจากนั้นจะไม่มีคะแนน และต้องแสดงว่า "ยังไม่รู้" ตรง ๆ
+   ห้ามเติมตัวเลขให้เต็มเดือนเพื่อความสวยงาม คนเอาไปเลือกวันออกทะเลจริง */
+
+/* คะแนนรายวันที่โหลดมาแล้ว คีย์เป็นวันที่แบบ YYYY-MM-DD */
+let outlookByDate = new Map();
 
 function scoreTier(score) {
   if (score >= 85) return 'excellent';
@@ -1622,39 +1625,63 @@ function scoreTier(score) {
   return 'poor';
 }
 
-function scoreReason(score) {
-  if (score >= 85) return 'จังหวะน้ำและ Solunar โดดเด่น เหมาะวางทริปล่วงหน้า';
-  if (score >= 70) return 'สภาพรวมดี ควรตรวจลมและคลื่นใกล้ออกเดินทาง';
-  return 'เงื่อนไขยังไม่เด่น แนะนำเลือกช่วงเวลาให้เหมาะกับหมาย';
+/* เดือนที่ปฏิทินกำลังแสดง — เริ่มที่เดือนปัจจุบันเสมอ */
+let calendarYear = now.getFullYear();
+let calendarMonth = now.getMonth();
+
+function isoFromParts(year, month, day) {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 function selectDay(day) {
   pickedDay = day;
   document.querySelector('.day.selected')?.classList.remove('selected');
   calendarGrid.querySelector(`[data-day="${day}"]`)?.classList.add('selected');
-  const date = new Date(CALENDAR_YEAR, CALENDAR_MONTH, day);
-  const score = DAY_SCORES[day - 1];
-  // ย้ำคำว่าตัวอย่างซ้ำตรงบรรทัดที่ผู้ใช้อ่านก่อนกดบันทึกทริป
-  pickedDate.textContent = `${formatThaiDate(date)} · คะแนนตัวอย่าง ${score}/100`;
-  pickedReason.textContent = `${scoreReason(score)} (คำอธิบายจากคะแนนตัวอย่าง ยังไม่ใช่ผลคำนวณจริง)`;
+
+  const date = new Date(calendarYear, calendarMonth, day);
+  const entry = outlookByDate.get(isoFromParts(calendarYear, calendarMonth, day));
+
+  if (!entry || !isFiniteNumber(entry.score)) {
+    pickedDate.textContent = formatThaiDate(date);
+    pickedReason.textContent = entry && entry.reason
+      ? entry.reason
+      : 'ยังคิดคะแนนของวันนี้ไม่ได้ เพราะแบบจำลองน้ำพยากรณ์ล่วงหน้าได้จำกัด';
+    return;
+  }
+
+  pickedDate.textContent = `${formatThaiDate(date)} · ${entry.score}/100 ${entry.label}`;
+
+  const parts = [];
+  if (entry.best_style_name) parts.push(`เด่นที่ ${entry.best_style_name}`);
+  if (entry.safety === 'dangerous') parts.push('⚠ ลมหรือคลื่นแรงเกินเกณฑ์เรือเล็ก');
+  else if (entry.safety === 'caution') parts.push('ต้องระวังลมและคลื่น');
+  pickedReason.textContent = parts.join(' · ') || 'ดูรายละเอียดที่การ์ดคะแนนหน้าแรก';
 }
 
 function buildCalendar() {
-  document.getElementById('calendarMonth').textContent = TH_MONTH_FULL[CALENDAR_MONTH];
-  document.getElementById('calendarYear').textContent = CALENDAR_YEAR + 543;
+  document.getElementById('calendarMonth').textContent = TH_MONTH_FULL[calendarMonth];
+  document.getElementById('calendarYear').textContent = calendarYear + 543;
 
-  const isCurrentMonth = now.getFullYear() === CALENDAR_YEAR && now.getMonth() === CALENDAR_MONTH;
-  const leadingBlanks = new Date(CALENDAR_YEAR, CALENDAR_MONTH, 1).getDay();
+  const isCurrentMonth = now.getFullYear() === calendarYear && now.getMonth() === calendarMonth;
+  const leadingBlanks = new Date(calendarYear, calendarMonth, 1).getDay();
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
   const markup = [];
 
   for (let i = 0; i < leadingBlanks; i += 1) {
     markup.push('<button type="button" class="blank" disabled></button>');
   }
-  DAY_SCORES.forEach((score, index) => {
-    const day = index + 1;
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const entry = outlookByDate.get(isoFromParts(calendarYear, calendarMonth, day));
     const today = isCurrentMonth && now.getDate() === day ? ' today' : '';
-    markup.push(`<button type="button" class="day press ${scoreTier(score)}${today}" data-day="${day}"><b>${day}</b><span>${score}</span></button>`);
-  });
+
+    // ไม่มีคะแนน = ยังไม่รู้ ไม่ใช่คะแนนต่ำ จึงไม่ใส่สีระดับใด ๆ และแสดงขีดแทนตัวเลข
+    const tier = entry && isFiniteNumber(entry.score) ? scoreTier(entry.score) : 'unknown';
+    const value = entry && isFiniteNumber(entry.score) ? String(entry.score) : '–';
+
+    markup.push(`<button type="button" class="day press ${tier}${today}" data-day="${day}">`
+      + `<b>${day}</b><span>${value}</span></button>`);
+  }
 
   calendarGrid.innerHTML = markup.join('');
   calendarGrid.querySelectorAll('.day').forEach((button) => {
@@ -1663,6 +1690,36 @@ function buildCalendar() {
 
   selectDay(isCurrentMonth ? now.getDate() : 1);
 }
+
+async function loadOutlook() {
+  const slot = document.getElementById('calendarState');
+  renderState(slot, { kind: 'loading', title: 'กำลังคิดคะแนนล่วงหน้า…' });
+
+  try {
+    const payload = await fetchJson('api/outlook.php', {
+      lat: activeLocation.lat,
+      lon: activeLocation.lon,
+    });
+
+    outlookByDate = new Map();
+    (payload.data.days || []).forEach((entry) => outlookByDate.set(entry.date, entry));
+
+    renderState(slot, null);
+    document.getElementById('calendarNotice').textContent =
+      `${(payload.meta && payload.meta.horizon_note) || ''} วันที่ยังไม่มีคะแนนจะแสดงเป็นขีด`;
+    buildCalendar();
+  } catch (error) {
+    outlookByDate = new Map();
+    renderState(slot, {
+      kind: 'error',
+      title: 'ยังคิดคะแนนล่วงหน้าไม่ได้',
+      detail: error.message,
+      retry: 'outlook',
+    });
+    buildCalendar();
+  }
+}
+retryActions.outlook = loadOutlook;
 
 buildCalendar();
 
@@ -1673,7 +1730,7 @@ document.getElementById('saveTrip').addEventListener('click', () => {
   }
   savedTrip = {
     spot: selectedSpot.name,
-    label: formatThaiDate(new Date(CALENDAR_YEAR, CALENDAR_MONTH, pickedDay)),
+    label: formatThaiDate(new Date(calendarYear, calendarMonth, pickedDay)),
   };
   planner.close();
   showToast(`บันทึกทริป ${savedTrip.spot} · ${savedTrip.label} แล้ว`);
