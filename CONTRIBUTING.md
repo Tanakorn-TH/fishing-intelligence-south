@@ -23,9 +23,25 @@ python -m http.server 5173
 | `styles.css` | สไตล์ทั้งหมด |
 | `app.js` | interaction ทั้งหมด — nav, planner, ปฏิทิน, toast |
 | `data-model.sql` | สคีมา MySQL 8 |
+| `api/` | backend PHP — `spots.php`, `gear.php`, `health.php` และ `lib/` |
+| `tests/` | ชุดทดสอบ API ที่ CI รัน |
 | `BATHYMETRY_IMPORT.md` | ขั้นตอนนำเข้าชั้นข้อมูลความลึก |
 | `scripts/check-dom-ids.mjs` | ตัวตรวจของ CI |
 | `.htmlvalidate.json` | ชุดกฎตรวจ HTML |
+
+## สภาพแวดล้อมปลายทาง
+
+ตรวจไว้เมื่อ 8 ส.ค. 2569 จากหน้า phpMyAdmin ของ `fishing.yru.ac.th`
+
+| | |
+|---|---|
+| Web server | Apache/2.4.65 (Ubuntu) + mod_fcgid อยู่หลัง nginx |
+| PHP | **8.4.11** |
+| MySQL | 8.0.46 (Ubuntu) ต่อผ่าน UNIX socket |
+| charset | utf8mb4 |
+
+เขียนโค้ดให้รันได้ตั้งแต่ **PHP 8.1** เผื่อเซิร์ฟเวอร์ถูกลดเวอร์ชัน — CI ตรวจไวยากรณ์ทั้ง 8.1 และ 8.4
+ส่วน integration test รันบน 8.4 ให้ตรงกับของจริง
 
 ## วิธีทำงาน
 
@@ -37,7 +53,7 @@ python -m http.server 5173
 
 ## CI ตรวจอะไรบ้าง
 
-ทุก PR จะรัน [.github/workflows/ci.yml](.github/workflows/ci.yml) 2 job
+ทุก PR จะรัน [.github/workflows/ci.yml](.github/workflows/ci.yml) 3 job
 
 > ⚠️ **ห้ามเปลี่ยนค่า `name:` ของ job ใน `ci.yml` โดยไม่แก้ ruleset ตาม**
 > branch protection บังคับ check ตาม**ชื่อ** ถ้าเปลี่ยนชื่อ job แล้วไม่แก้ ruleset
@@ -70,6 +86,22 @@ docker run --rm -d --name fishing-db -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABA
 
 ```bash
 MYSQL_PWD=root mysql -h 127.0.0.1 -uroot --default-character-set=utf8mb4 fishing < data-model.sql
+```
+
+**`api` — ตรวจ API**
+
+ตรวจไวยากรณ์ PHP บน 8.1 และ 8.4 แล้วยกเซิร์ฟเวอร์ PHP ขึ้นมาจริง ยิง HTTP เข้า endpoint
+ทดสอบกับข้อมูลใน `tests/fixtures.sql` — รวมถึงข้อที่ยืนยันว่า API อ่านละติจูด/ลองจิจูดไม่สลับด้าน
+การรับค่าที่ไม่ถูกต้อง และการที่ `health.php` ไม่รั่วค่าเชื่อมต่อ
+
+รันเองในเครื่อง (ต้องมี PHP + ฐานข้อมูลจาก job ก่อนหน้า):
+
+```bash
+php -S 127.0.0.1:8080 -t .
+```
+
+```bash
+DB_HOST=127.0.0.1 DB_NAME=fishing DB_USER=root DB_PASSWORD=root API_BASE=http://127.0.0.1:8080 php tests/api-test.php
 ```
 
 ## แนวทางเขียนโค้ด

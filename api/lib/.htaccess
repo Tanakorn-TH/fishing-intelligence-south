@@ -1,0 +1,9 @@
+# ไฟล์ในโฟลเดอร์นี้เป็นโค้ดภายใน ห้ามเรียกตรงจากเว็บ
+# กันไว้อีกชั้นเท่านั้น — ตัวจริงที่กัน .env คือการวางไฟล์ไว้นอก document root
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
