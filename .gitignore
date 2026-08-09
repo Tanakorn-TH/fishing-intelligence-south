@@ -29,3 +29,7 @@ data/raw/
 # กริดความลึกดิบที่ดึงมาสร้างเส้น — 8 MB ไม่ต้องเก็บใน repo
 # สร้างใหม่ได้ด้วย: node scripts/build-bathymetry.mjs --refresh
 scripts/bathy-south.csv
+
+# ตารางดิบของ FishBase และกรมประมงที่ scripts/build-species.py ดึงมา — รวมกันเกิน 150 MB
+# ดึงใหม่ได้ด้วย: python scripts/build-species.py --refresh
+scripts/.cache/
