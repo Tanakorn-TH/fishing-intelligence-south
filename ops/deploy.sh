@@ -69,6 +69,10 @@ MAP_FILES=(
   map/reefs-south.json
   map/marks-south.json
 )
+# ระเบียนปลา สร้างด้วย build-species.py — ไม่ใช่ชั้นแผนที่จึงแยกออกมา
+DATA_FILES=(
+  data/species-south.json
+)
 API_FILES=(
   api/spots.php api/gear.php api/health.php
   api/weather.php api/solunar.php api/tides.php api/score.php api/places.php api/outlook.php
@@ -87,7 +91,7 @@ LIB_FILES=(
 # เคยเกิดมาแล้วจริง: weather/solunar/tides/score กับ lib อีก 4 ตัวตกค้างอยู่ในเครื่อง
 # ไม่เคยขึ้น production เลย จึงเพิ่มด่านนี้ไว้ให้ล้มตั้งแต่ก่อนส่ง แทนที่จะไปพังบนเว็บจริง
 step "ตรวจว่าไม่มีไฟล์ตกหล่นจากรายการ"
-LISTED=" ${ROOT_FILES[*]} ${API_FILES[*]} ${LIB_FILES[*]} ${MAP_FILES[*]} "
+LISTED=" ${ROOT_FILES[*]} ${API_FILES[*]} ${LIB_FILES[*]} ${MAP_FILES[*]} ${DATA_FILES[*]} "
 MISSING_FROM_LIST=()
 
 # ตรวจทั้ง PHP ฝั่งหลังบ้าน และไฟล์หน้าเว็บที่เบราว์เซอร์ต้องโหลด
@@ -99,6 +103,8 @@ done < <({
   find api -name '*.php'
   find . -maxdepth 1 \( -name '*.js' -o -name '*.css' -o -name '*.html' \) -printf '%P\n'
   find map -type f 2>/dev/null
+  # แค่ชั้นบนสุด — data/raw/ เป็นไฟล์ดิบที่ .gitignore กันไว้ ไม่ต้องขึ้น production
+  find data -maxdepth 1 -type f 2>/dev/null
 } | sort)
 
 if [ "${#MISSING_FROM_LIST[@]}" -gt 0 ]; then
@@ -112,7 +118,7 @@ mapfile -t FONT_FILES < <(find fonts -maxdepth 1 -name '*.woff2' | sort)
 [ "${#FONT_FILES[@]}" -gt 0 ] || die "ไม่พบไฟล์ฟอนต์ใน fonts/"
 
 step "ไฟล์ที่จะส่ง"
-for f in "${ROOT_FILES[@]}" "${API_FILES[@]}" "${LIB_FILES[@]}" "${MAP_FILES[@]}"; do
+for f in "${ROOT_FILES[@]}" "${API_FILES[@]}" "${LIB_FILES[@]}" "${MAP_FILES[@]}" "${DATA_FILES[@]}"; do
   [ -f "$f" ] || die "ไม่พบ $f"
   echo "  $f"
 done
@@ -128,10 +134,12 @@ BATCH="$WORK/batch.sftp"
   echo "-mkdir ${DEPLOY_DOCROOT}/api/lib"
   echo "-mkdir ${DEPLOY_DOCROOT}/fonts"
   echo "-mkdir ${DEPLOY_DOCROOT}/map"
+  echo "-mkdir ${DEPLOY_DOCROOT}/data"
   for f in "${ROOT_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/$(basename "$f")"; done
   for f in "${API_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/api/$(basename "$f")"; done
   for f in "${LIB_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/api/lib/$(basename "$f")"; done
   for f in "${MAP_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/map/$(basename "$f")"; done
+  for f in "${DATA_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/data/$(basename "$f")"; done
   for f in "${FONT_FILES[@]}"; do echo "put $f ${DEPLOY_DOCROOT}/fonts/$(basename "$f")"; done
 } > "$BATCH"
 
