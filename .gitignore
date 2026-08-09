@@ -33,3 +33,7 @@ scripts/bathy-south.csv
 # ตารางดิบของ FishBase และกรมประมงที่ scripts/build-species.py ดึงมา — รวมกันเกิน 150 MB
 # ดึงใหม่ได้ด้วย: python scripts/build-species.py --refresh
 scripts/.cache/
+
+# เครื่องมือของ Claude Code — ตั้งค่าเฉพาะเครื่อง ไม่ขึ้น repo
+.claude/
+skills-lock.json
