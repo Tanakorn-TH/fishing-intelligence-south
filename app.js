@@ -10,7 +10,7 @@
 /* เลขเวอร์ชัน — ที่นี่ที่เดียวเป็นแหล่งความจริง
    ปล่อยรุ่น = แก้เลขนี้ + สร้าง git tag ชื่อเดียวกัน (vX.Y.Z) แล้ว push tags
    ค่าใน index.html เป็นแค่ตัวสำรองตอน JS ยังไม่ทำงาน ต้องตรงกับค่านี้เสมอ */
-const APP_VERSION = '0.8.0';
+const APP_VERSION = '0.9.0';
 
 const TH_DAY_ABBR = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 const TH_MONTH_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -409,7 +409,53 @@ function renderWeather(payload) {
   renderHourly(hourly);
   renderSeaOutlook((payload.data && payload.data.sea_temperature_daily) || []);
   renderSeaFront(payload.data && payload.data.sea_front);
+  renderChlorophyll(payload.data && payload.data.chlorophyll);
   renderSource(document.getElementById('weatherSource'), payload.meta);
+}
+
+/**
+ * คลอโรฟิลล์-เอ — ตัวชี้แหล่งอาหาร
+ *
+ * บอก "แถวนี้มีฐานอาหารแค่ไหน" ซึ่งเป็นคุณสมบัติของ *พื้นที่* ไม่ใช่ของ *วัน*
+ * จึงไม่ได้เอาเข้าสูตรคะแนน เพราะคะแนนตอบคำถามว่า "วันไหนควรไป"
+ * ส่วนตัวเลขนี้ตอบว่า "ที่ไหนควรไป" ซึ่งเป็นคนละคำถาม
+ *
+ * เกณฑ์แบ่งระดับใช้ช่วงมาตรฐานทางสมุทรศาสตร์ ไม่ใช่ตั้งเอง
+ */
+function describeChlorophyll(value) {
+  if (value < 0.2) return 'น้ำใสแบบทะเลเปิด ฐานอาหารน้อย';
+  if (value < 1.0) return 'ผลผลิตปานกลาง';
+  if (value < 3.0) return 'ผลผลิตสูง มีฐานอาหารดี';
+  return 'ผลผลิตสูงมาก อาจขุ่นหรือมีแพลงก์ตอนบูม';
+}
+
+function renderChlorophyll(chl) {
+  const row = document.getElementById('chlRow');
+
+  if (!chl || !isFiniteNumber(chl.value_mg_m3)) {
+    row.hidden = true;
+    return;
+  }
+
+  row.hidden = false;
+  const value = chl.value_mg_m3;
+
+  document.getElementById('chlValue').textContent =
+    `คลอโรฟิลล์ ${value.toFixed(2)} mg/m³ · ${describeChlorophyll(value)}`;
+
+  const bits = [];
+  if (chl.observed_month) bits.push(`ค่าเฉลี่ยเดือน ${chl.observed_month}`);
+  if (isFiniteNumber(chl.min_mg_m3) && isFiniteNumber(chl.max_mg_m3)) {
+    bits.push(`ในกรอบ 9 กม. อยู่ระหว่าง ${chl.min_mg_m3}–${chl.max_mg_m3}`);
+  }
+  // บอกว่าเป็นค่ารายเดือน ไม่ใช่ของวันนี้ ไม่งั้นคนจะอ่านผิดว่าเป็นสภาพวันนี้
+  bits.push('เป็นค่ารายเดือนจากดาวเทียม ไม่ใช่สภาพของวันนี้');
+  document.getElementById('chlDetail').textContent = bits.join(' · ');
+
+  // จุดสีไล่ตามความเข้มข้น ใช้สเกลเขียวเพราะคลอโรฟิลล์คือรงควัตถุสีเขียว
+  const dot = document.getElementById('chlDot');
+  dot.style.background = value < 0.2 ? '#8fd4e8'
+    : (value < 1.0 ? '#7fc98f' : (value < 3.0 ? '#4da35c' : '#2f7a3d'));
 }
 
 /**
