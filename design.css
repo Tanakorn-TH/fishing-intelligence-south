@@ -1650,3 +1650,41 @@ body {
   line-height: 1.5;
   color: #7e9fa6;
 }
+
+/* คลอโรฟิลล์ — ตัวชี้แหล่งอาหาร
+   จุดสีไล่ตามความเข้มข้นด้วยสเกลเขียว เพราะคลอโรฟิลล์คือรงควัตถุสีเขียวจริง ๆ
+   ผู้ใช้จึงเชื่อมโยงสีกับสิ่งที่มันวัดได้โดยไม่ต้องอธิบาย */
+.chl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .03);
+}
+
+.chl-row[hidden] { display: none; }
+
+.chl-dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #7fc98f;
+}
+
+.chl-row b {
+  display: block;
+  font: 12px var(--font-mono);
+  color: #d9f2f0;
+}
+
+.chl-row small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #7e9fa6;
+}

@@ -24,6 +24,29 @@ const FIS_WEATHER_TZ = 'Asia/Bangkok';
 const FIS_WEATHER_CACHE_TTL = 900;
 const FIS_WEATHER_HOURS = 24;
 
+/* ── คลอโรฟิลล์-เอ จากดาวเทียม ──────────────────────────────────────────
+   ตัวชี้แหล่งอาหาร แพลงก์ตอนพืชมากแปลว่ามีฐานอาหาร ปลาเหยื่อตาม ปลาล่าตามอีกที
+   ตรงกว่าอุณหภูมิเพราะอุณหภูมิเป็นตัวแทนทางอ้อม ส่วนคลอโรฟิลล์คือของจริงที่วัดได้
+
+   ⚠️ ทำไมใช้ชุดรายเดือน ไม่ใช่รายวันหรือ 8 วัน:
+   วัดหมายจริง 20 จุดในเดือน ส.ค. 2569 ชุด 8 วันมีข้อมูลแค่ 4/20 หมาย (20%)
+   ขยายกรอบเป็น 18 กม. แล้วยังได้แค่ 9/20 (45%) ชุมพร ตรัง พังงา ว่างทั้งจังหวัด
+   เพราะมรสุมตะวันตกเฉียงใต้เมฆปกคลุมแทบตลอด ดาวเทียมมองผ่านเมฆไม่ได้
+   ส่วนชุดรายเดือนได้ครบ 20/20 หมาย เพราะสะสมภาพทั้งเดือนจนหาช่องฟ้าเปิดเจอ
+
+   ชุด gap-filled ที่เติมช่องว่างให้แล้วมีอยู่จริงแต่เข้าไม่ได้ (403)
+   และชุด VIIRS ทุกตัวค้างอยู่เดือน มิ.ย. 2569 จึงเหลือ MODIS รายเดือนตัวเดียว */
+const FIS_CHL_DATASET = 'erdMH1chlamday_R2022NRT';
+const FIS_CHL_BASE = 'https://coastwatch.pfeg.noaa.gov/erddap/griddap';
+
+/* กรอบที่ดึงรอบจุด หน่วยองศา — 0.04 องศา ~ 4.4 กม. ต่อด้าน รวมเป็นกรอบราว 9 กม.
+   กว้างพอให้เฉลี่ยข้ามเซลล์ 4 กม. ได้หลายเซลล์ แต่ยังเป็น "แถวนี้" อยู่ */
+const FIS_CHL_BOX_DEG = 0.04;
+
+/* แคชนานกว่าลมและน้ำมาก เพราะข้อมูลเป็นค่าเฉลี่ยรายเดือนที่ออกเดือนละครั้ง
+   ดึงถี่กว่านี้คือรบกวนเซิร์ฟเวอร์สาธารณะโดยไม่ได้ค่าใหม่อะไรเลย */
+const FIS_CHL_CACHE_TTL = 43200;
+
 const FIS_TIDES_TZ = 'Asia/Bangkok';
 const FIS_TIDES_CACHE_TTL = 1800;
 const FIS_TIDES_MAX_AHEAD_DAYS = 7;
@@ -173,6 +196,11 @@ function fis_weather_payload(float $lat, float $lon, int $days = FIS_WEATHER_PAN
     }
 
     $payload = fis_weather_build($forecast, $marine);
+
+    /* คลอโรฟิลล์มาจาก ERDDAP ซึ่งเป็นคนละปลายทางกับ Open-Meteo และช้ากว่า
+       ใส่ทีหลังเพื่อให้ล้มแยกกันได้ ถ้า ERDDAP ล่ม สภาพอากาศต้องยังใช้ได้ตามปกติ */
+    $payload['data']['chlorophyll'] = fis_chlorophyll_payload($lat, $lon);
+
     fis_cache_put($cacheKey, $payload);
 
     $payload['cached'] = false;
@@ -194,6 +222,109 @@ function fis_weather_forecast_url(float $lat, float $lon, int $days): string
         // แต่การคิดคะแนนล่วงหน้าต้องขอมากกว่านั้น จึงให้ผู้เรียกกำหนดเอง
         'forecast_days' => $days,
     ], '', '&', PHP_QUERY_RFC3986);
+}
+
+/**
+ * คลอโรฟิลล์-เอ เฉลี่ยรอบจุดที่สนใจ จากดาวเทียม MODIS ผ่าน NOAA ERDDAP
+ *
+ * คืน null เมื่อดึงไม่ได้หรือไม่มีเซลล์ไหนมีค่า ซึ่งเกิดได้จริงถ้าเมฆบังทั้งเดือน
+ * ห้ามเดาค่าแทน — "ไม่มีข้อมูล" เป็นคำตอบที่ถูกต้องกว่าตัวเลขที่แต่งขึ้น
+ *
+ * @return array<string, mixed>|null
+ */
+function fis_chlorophyll_payload(float $lat, float $lon): ?array
+{
+    $lat = round($lat, 2);
+    $lon = round($lon, 2);
+
+    $cacheKey = sprintf('chl:%.2f:%.2f', $lat, $lon);
+    $cached = fis_cache_get($cacheKey, FIS_CHL_CACHE_TTL);
+    if ($cached !== null) {
+        return $cached['value'] ?? null;
+    }
+
+    try {
+        $csv = fis_remote_get_text(fis_chlorophyll_url($lat, $lon), 8);
+    } catch (FisRemoteException $e) {
+        // ของเสริม ล้มได้โดยไม่ทำให้สภาพอากาศทั้งก้อนล้มตาม
+        error_log('[fishing-api/chlorophyll] ดึงไม่ได้: ' . $e->getMessage());
+        return null;
+    }
+
+    $parsed = fis_chlorophyll_parse($csv);
+    // เก็บลงแคชทั้งกรณีที่ได้ค่าและกรณีที่ไม่มีค่า จะได้ไม่ยิงซ้ำทุกครั้งที่เมฆบัง
+    fis_cache_put($cacheKey, ['value' => $parsed]);
+
+    return $parsed;
+}
+
+function fis_chlorophyll_url(float $lat, float $lon): string
+{
+    $box = FIS_CHL_BOX_DEG;
+
+    /* (last) ให้ ERDDAP เลือกเวลาล่าสุดที่มีเอง ดีกว่าเราคำนวณวันที่ส่งไป
+       เพราะรอบการออกข้อมูลไม่ตายตัว ถ้าเดาวันผิดจะได้ 404 ทั้งที่ข้อมูลมี */
+    $query = sprintf(
+        'chlorophyll[(last)][(%.4f):(%.4f)][(%.4f):(%.4f)]',
+        $lat - $box,
+        $lat + $box,
+        $lon - $box,
+        $lon + $box
+    );
+
+    return FIS_CHL_BASE . '/' . FIS_CHL_DATASET . '.csv?' . rawurlencode($query);
+}
+
+/**
+ * แยก CSV ของ ERDDAP — สองบรรทัดแรกเป็นชื่อคอลัมน์กับหน่วย ที่เหลือเป็นข้อมูล
+ * เซลล์ที่เมฆบังจะเป็นค่าว่างหรือ NaN ต้องข้ามไป ไม่ใช่นับเป็นศูนย์
+ *
+ * @return array<string, mixed>|null
+ */
+function fis_chlorophyll_parse(string $csv): ?array
+{
+    $lines = preg_split('/
+?
+/', trim($csv));
+    if ($lines === false || count($lines) < 3) {
+        return null;
+    }
+
+    $values = [];
+    $observed = null;
+    foreach (array_slice($lines, 2) as $line) {
+        $cells = str_getcsv($line);
+        if (count($cells) < 4) {
+            continue;
+        }
+        $raw = trim((string) $cells[3]);
+        if ($raw === '' || strcasecmp($raw, 'NaN') === 0 || !is_numeric($raw)) {
+            continue;
+        }
+        $values[] = (float) $raw;
+        $observed = $observed ?? trim((string) $cells[0]);
+    }
+
+    if ($values === []) {
+        return null;
+    }
+
+    sort($values);
+    $count = count($values);
+    $middle = (int) floor($count / 2);
+
+    return [
+        // ใช้มัธยฐาน ไม่ใช่ค่าเฉลี่ย เพราะเซลล์ติดชายฝั่งมักมีค่าสูงผิดปกติ
+        // จากตะกอนและน้ำจืด ซึ่งดาวเทียมนับรวมเป็นคลอโรฟิลล์ไปด้วย
+        'value_mg_m3' => round($count % 2 === 1
+            ? $values[$middle]
+            : ($values[$middle - 1] + $values[$middle]) / 2, 2),
+        'min_mg_m3' => round($values[0], 2),
+        'max_mg_m3' => round($values[$count - 1], 2),
+        'cells_used' => $count,
+        'observed_month' => $observed === null ? null : substr($observed, 0, 7),
+        'source' => 'MODIS Aqua ผ่าน NOAA ERDDAP (' . FIS_CHL_DATASET . ')',
+    ];
 }
 
 /**

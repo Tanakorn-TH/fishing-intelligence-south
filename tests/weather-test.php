@@ -340,5 +340,40 @@ check('marine_raw ไม่หลุดออกไปกับคำตอบ (
       mb_strpos((string) $r['body'], 'marine_raw') === false,
       'พบ marine_raw ใน payload');
 
+echo "\n--- คลอโรฟิลล์ ---\n";
+
+check('มีคีย์ chlorophyll (เป็น object หรือ null)', array_key_exists('chlorophyll', $data));
+
+$chl = $data['chlorophyll'] ?? null;
+if (is_array($chl)) {
+    foreach (['value_mg_m3', 'min_mg_m3', 'max_mg_m3', 'cells_used', 'observed_month', 'source'] as $field) {
+        check("chlorophyll มีคีย์ {$field}", array_key_exists($field, $chl));
+    }
+
+    /* น้ำทะเลเปิดอยู่ราว 0.05 ส่วนน้ำชายฝั่งที่มีตะกอนขึ้นได้ถึงหลักสิบ
+       เกิน 100 แปลว่าอ่านคอลัมน์ผิดหรือปลายทางเปลี่ยนหน่วย ไม่ใช่ทะเลแปลก */
+    check('ค่าคลอโรฟิลล์อยู่ในช่วงที่เป็นไปได้ (0-100 mg/m3)',
+          is_numeric($chl['value_mg_m3'] ?? null)
+          && $chl['value_mg_m3'] > 0 && $chl['value_mg_m3'] <= 100.0,
+          var_export($chl['value_mg_m3'] ?? null, true));
+
+    check('min <= ค่ากลาง <= max',
+          $chl['min_mg_m3'] <= $chl['value_mg_m3'] && $chl['value_mg_m3'] <= $chl['max_mg_m3'],
+          "min {$chl['min_mg_m3']} กลาง {$chl['value_mg_m3']} max {$chl['max_mg_m3']}");
+
+    check('ใช้ข้อมูลอย่างน้อยหนึ่งเซลล์',
+          is_int($chl['cells_used'] ?? null) && $chl['cells_used'] >= 1,
+          var_export($chl['cells_used'] ?? null, true));
+
+    check('observed_month เป็นรูปแบบ YYYY-MM',
+          preg_match('/^\d{4}-\d{2}$/', (string) ($chl['observed_month'] ?? '')) === 1,
+          var_export($chl['observed_month'] ?? null, true));
+
+    /* ต้องบอกที่มาติดมากับข้อมูลเสมอ เป็นกติกาเดียวกับทุก endpoint ในโปรเจค */
+    check('ระบุที่มาของข้อมูล',
+          is_string($chl['source'] ?? null) && mb_strpos($chl['source'], 'ERDDAP') !== false,
+          var_export($chl['source'] ?? null, true));
+}
+
 echo "\nผ่าน {$passed} ข้อ ไม่ผ่าน {$failed} ข้อ\n";
 exit($failed === 0 ? 0 : 1);

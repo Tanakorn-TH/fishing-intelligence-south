@@ -43,6 +43,32 @@ function fis_remote_get_json(string $url, int $timeoutSeconds = FIS_REMOTE_MAX_T
 }
 
 /**
+ * ดึงข้อมูลที่ไม่ใช่ JSON — ใช้กับ ERDDAP ซึ่งตอบ CSV
+ *
+ * แยกจาก fis_remote_get_json เพราะตัวนั้นบังคับว่าต้อง decode เป็น array ให้ได้
+ * ส่วนตัวนี้คืนข้อความดิบให้ผู้เรียกไปแยกเอง แต่ยังใช้ทางเดินและการจัดการ error
+ * ชุดเดียวกัน จะได้ไม่มี code path ใหม่ที่ไม่มีใครดูแล
+ */
+function fis_remote_get_text(string $url, int $timeoutSeconds = FIS_REMOTE_MAX_TIMEOUT): string
+{
+    $timeout = max(1, min(FIS_REMOTE_MAX_TIMEOUT, $timeoutSeconds));
+
+    $response = function_exists('curl_init')
+        ? fis_remote_via_curl($url, $timeout)
+        : fis_remote_via_stream($url, $timeout);
+
+    $status = $response['status'];
+    if ($status < 200 || $status >= 300) {
+        throw new FisRemoteException(
+            'ปลายทางตอบ HTTP ' . $status . ' (' . fis_remote_host($url) . '): '
+            . substr(trim($response['body']), 0, 200)
+        );
+    }
+
+    return $response['body'];
+}
+
+/**
  * @return array{status:int, body:string}
  */
 function fis_remote_via_curl(string $url, int $timeout): array
