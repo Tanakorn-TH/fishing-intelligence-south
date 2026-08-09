@@ -15,10 +15,12 @@
 
    ตอนเพิ่มตัวตรวจนี้ โปรเจคยังไม่มีจุดไหนผิดเลย มันจึงมีไว้กันของใหม่หลุดเข้ามา
    ไม่ใช่ไว้แก้ของเก่า */
-import { readFileSync } from 'node:fs';
-import { globSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
-const files = globSync('*.css');
+/* ใช้ readdirSync ไม่ใช่ globSync — globSync เพิ่งมีใน Node 22
+   แต่ CI รัน Node 20 ตัวสคริปต์จึงพังตอนนำเข้าโมดูลก่อนจะได้ทำงานอะไรเลย
+   เครื่องนักพัฒนามักใหม่กว่า CI จึงไม่เห็นปัญหานี้ตอนรันในเครื่อง */
+const files = readdirSync('.').filter((name) => name.endsWith('.css')).sort();
 const problems = [];
 
 for (const file of files) {
