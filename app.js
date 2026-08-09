@@ -10,7 +10,7 @@
 /* เลขเวอร์ชัน — ที่นี่ที่เดียวเป็นแหล่งความจริง
    ปล่อยรุ่น = แก้เลขนี้ + สร้าง git tag ชื่อเดียวกัน (vX.Y.Z) แล้ว push tags
    ค่าใน index.html เป็นแค่ตัวสำรองตอน JS ยังไม่ทำงาน ต้องตรงกับค่านี้เสมอ */
-const APP_VERSION = '0.5.1';
+const APP_VERSION = '0.6.0';
 
 const TH_DAY_ABBR = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 const TH_MONTH_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -246,6 +246,7 @@ const GPS_ASKED_KEY = 'fis.gps.asked.v1';
 const SEARCH_DEBOUNCE_MS = 250;
 
 let spotMap = null;
+let mapSites = [];       // ปะการังเทียมและหมาย เก็บไว้หาพิกัดตอนผู้ใช้กดเลือก
 let placeRows = [];
 let favourites = [];
 let searchSeq = 0;       // กันคำตอบเก่ามาทับคำตอบใหม่ตอนพิมพ์เร็ว ๆ
@@ -271,7 +272,16 @@ function writeJsonSetting(key, value) {
 /* ═══ แถบบนและคำทักทาย — คำนวณจาก Date เสมอ ═══════════════════════════ */
 
 const now = new Date();
-document.getElementById('todayLabel').textContent = formatThaiDate(now);
+
+/* วันที่ที่กำลังดูอยู่ ค่าเริ่มต้นคือวันนี้
+   ไม่เก็บลง localStorage โดยตั้งใจ — เปิดเว็บใหม่ควรได้วันนี้เสมอ
+   เพราะคนเปิดดูก่อนออกเรือ ถ้าจำวันที่เก่าไว้จะอ่านสภาพอากาศของวันที่ผ่านไปแล้ว */
+let activeDate = isoDate(now);
+
+/* ขอบเขตที่เลือกได้ ผูกกับระยะที่แบบจำลองน้ำพยากรณ์ได้ (ดู FIS_TIDES_MAX_AHEAD_DAYS)
+   ถ้าปล่อยให้เลือกไกลกว่านี้ ผู้ใช้จะกดแล้วเจอ error แทนที่จะเลือกไม่ได้ตั้งแต่แรก */
+const DATE_MAX_AHEAD_DAYS = 7;
+const DATE_MAX_BACK_DAYS = 30;
 document.getElementById('appVersion').textContent = `v${APP_VERSION}`;
 
 function greetingForHour(hour) {
@@ -306,6 +316,10 @@ function renderLocation() {
   const parts = [];
   if (activeLocation.province) parts.push(String(activeLocation.province).replace('จังหวัด', 'จ.'));
   if (activeLocation.coast) parts.push(activeLocation.coast);
+
+  // กองกลางทะเลต้องเห็นตัวเลขพิกัด เพราะคนจะเอาไปกดใส่เครื่องหาปลาต่อ
+  // ชื่อจังหวัดอย่างเดียวพาไปถึงกองไม่ได้
+  if (activeLocation.detail) parts.push(activeLocation.detail);
 
   if (parts.length) {
     document.getElementById('locationCoords').textContent = parts.join(' · ');
@@ -544,7 +558,7 @@ async function loadSolunar() {
     const payload = await fetchJson('api/solunar.php', {
       lat: activeLocation.lat,
       lon: activeLocation.lon,
-      date: isoDate(new Date()),
+      date: activeDate,
     });
     renderSolunar(payload);
   } catch (error) {
@@ -686,6 +700,10 @@ function pickPlace(id) {
   const row = placeRows.find((item) => item.id === id);
   if (!row) return;
 
+  // เลือกหมายจากรายการแล้ว ต้องปลดไฮไลต์ของกองที่เคยกดไว้
+  // ไม่งั้นแผนที่จะดูเหมือนกำลังเลือกอยู่สองที่พร้อมกัน
+  if (spotMap) spotMap.setSelectedSite(null);
+
   applyLocation({
     id: row.id,
     lat: row.lat,
@@ -772,6 +790,224 @@ function renderDepthLegend(depth) {
   ).join('') + '<span class="depth-unit">เมตร</span>';
 }
 
+/* ── ตัวเลือกวันที่บนแถบบน ─────────────────────────────────────────────
+   คะแนน น้ำ และ Solunar คิดตามวันที่ที่เลือก ส่วนแถบสภาพอากาศยังเป็นค่าปัจจุบัน
+   เพราะ /api/weather.php ตอบสภาพ ณ ตอนนี้ ไม่ได้ตอบรายวัน
+   ความต่างนี้ต้องบอกผู้ใช้ตรง ๆ ไม่ใช่ปล่อยให้เดาเอง จึงมีแถบเตือนด้านล่างแถบบน */
+
+function dateFromIso(iso) {
+  const [year, month, day] = String(iso).split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function shiftDays(base, days) {
+  const next = new Date(base.getFullYear(), base.getMonth(), base.getDate() + days);
+  return next;
+}
+
+function isToday(iso) {
+  return iso === isoDate(new Date());
+}
+
+function describeDate(iso) {
+  const today = isoDate(new Date());
+  if (iso === today) return 'วันนี้';
+  if (iso === isoDate(shiftDays(new Date(), 1))) return 'พรุ่งนี้';
+  if (iso === isoDate(shiftDays(new Date(), -1))) return 'เมื่อวาน';
+  return formatThaiDate(dateFromIso(iso));
+}
+
+function renderDateControl() {
+  document.getElementById('todayLabel').textContent = describeDate(activeDate);
+
+  const banner = document.getElementById('dateBanner');
+  if (isToday(activeDate)) {
+    banner.hidden = true;
+    return;
+  }
+
+  banner.hidden = false;
+  banner.textContent = `กำลังดู ${formatThaiDate(dateFromIso(activeDate))}`
+    + ' · คะแนน น้ำ และ Solunar เป็นของวันที่เลือก'
+    + ' ส่วนแถบลม-คลื่น-ฝน ยังเป็นค่า ณ ตอนนี้';
+}
+
+function renderDateQuick() {
+  const today = new Date();
+  const chips = [];
+  for (let offset = 0; offset <= DATE_MAX_AHEAD_DAYS; offset++) {
+    const day = shiftDays(today, offset);
+    const iso = isoDate(day);
+    chips.push(
+      `<button type="button" class="date-chip press${iso === activeDate ? ' on' : ''}" data-date="${iso}">`
+      + `<small>${TH_DAY_ABBR[day.getDay()]}</small><b>${day.getDate()}</b>`
+      + `<span>${TH_MONTH_ABBR[day.getMonth()]}</span></button>`
+    );
+  }
+  document.getElementById('dateQuick').innerHTML = chips.join('');
+}
+
+function applyDate(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+
+  // กันไว้ตั้งแต่ฝั่งหน้าเว็บ ดีกว่าปล่อยให้ยิงไปแล้วได้ error 400 กลับมา
+  const today = new Date();
+  const min = isoDate(shiftDays(today, -DATE_MAX_BACK_DAYS));
+  const max = isoDate(shiftDays(today, DATE_MAX_AHEAD_DAYS));
+  if (iso < min || iso > max) {
+    showToast(`เลือกได้ระหว่าง ${formatThaiDate(dateFromIso(min))} ถึง ${formatThaiDate(dateFromIso(max))}`);
+    return;
+  }
+
+  activeDate = iso;
+  renderDateControl();
+  renderDateQuick();
+  document.getElementById('dateInput').value = iso;
+
+  // สภาพอากาศไม่ต้องโหลดใหม่ เพราะ endpoint นั้นตอบค่าปัจจุบันอย่างเดียว
+  loadSolunar();
+  loadTides();
+  loadScore();
+}
+
+function openDatePicker() {
+  const today = new Date();
+  const input = document.getElementById('dateInput');
+  input.min = isoDate(shiftDays(today, -DATE_MAX_BACK_DAYS));
+  input.max = isoDate(shiftDays(today, DATE_MAX_AHEAD_DAYS));
+  input.value = activeDate;
+
+  document.getElementById('dateNotice').textContent =
+    `เลือกล่วงหน้าได้ ${DATE_MAX_AHEAD_DAYS} วัน เท่าที่แบบจำลองระดับน้ำพยากรณ์ได้`
+    + ` และย้อนหลังได้ ${DATE_MAX_BACK_DAYS} วัน`;
+
+  renderDateQuick();
+  document.getElementById('datePicker').showModal();
+}
+
+document.getElementById('openDatePicker').addEventListener('click', openDatePicker);
+document.querySelector('.close-date').addEventListener('click', () => {
+  document.getElementById('datePicker').close();
+});
+document.getElementById('dateQuick').addEventListener('click', (event) => {
+  const chip = event.target.closest('[data-date]');
+  if (!chip) return;
+  applyDate(chip.dataset.date);
+  document.getElementById('datePicker').close();
+});
+document.getElementById('dateInput').addEventListener('change', (event) => {
+  applyDate(event.target.value);
+  document.getElementById('datePicker').close();
+});
+
+renderDateControl();
+
+/* ── ชั้นข้อมูลของแผนที่กลาง ───────────────────────────────────────────
+   แผนที่มีอินสแตนซ์เดียวทั้งเว็บ ชั้นข้อมูลจึงโหลดครั้งเดียวตอนเปิดแผงครั้งแรก
+   ทุกชั้นยกเว้นชายฝั่งเป็นของเสริม โหลดไม่ได้ก็ต้องยังเลือกจุดจากรายการได้อยู่
+   เพราะคนที่เปิดเว็บกลางทะเลอาจมีสัญญาณพอโหลด JSON ก้อนเล็กได้ไม่ครบทุกก้อน */
+
+async function fetchLayer(file) {
+  try {
+    const response = await fetch(`map/${file}?v=${APP_VERSION}`);
+    return response.ok ? await response.json() : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function loadMapLayers() {
+  // ยิงพร้อมกันทุกก้อน ไฟล์รวมกันไม่ถึง 250 KB และไม่มีก้อนไหนต้องรอผลของก้อนอื่น
+  const [coast, borders, depth, reefs, marks] = await Promise.all([
+    fetchLayer('coastline-south.json'),
+    fetchLayer('borders-south.json'),
+    fetchLayer('depth-south.json'),
+    fetchLayer('reefs-south.json'),
+    fetchLayer('marks-south.json'),
+  ]);
+
+  if (coast) spotMap.setCoastline(coast);
+  if (borders) spotMap.setBorders(borders);
+  if (depth) {
+    spotMap.setDepth(depth);
+    renderDepthLegend(depth);
+  }
+
+  mapSites = buildSites(reefs, marks);
+  spotMap.setSites(mapSites);
+  document.getElementById('mapLegend').hidden = mapSites.length === 0 && !borders;
+}
+
+/**
+ * รวมปะการังเทียมกับหมายให้เป็นรายการเดียวที่แผนที่วาดได้
+ *
+ * ปะการังเทียมหนึ่ง "แหล่ง" มีหลายจุดจัดวาง (กรมประมงวางเป็นกลุ่ม)
+ * จึงตั้งชื่อป้ายจากตำบลหรือแหล่ง แล้วต่อท้ายด้วยความลึก
+ * ซึ่งเป็นตัวเลขที่คนตกปลาใช้ตัดสินใจก่อนอย่างอื่น
+ */
+function buildSites(reefs, marks) {
+  const sites = [];
+
+  (reefs && reefs.reefs ? reefs.reefs : []).forEach((reef, index) => {
+    const where = reef.tambon || reef.amphoe || reef.site || reef.province;
+    sites.push({
+      key: `reef:${index}`,
+      kind: 'reef',
+      label: isFiniteNumber(reef.depth_m) ? `${where} ${reef.depth_m} ม.` : where,
+      name: `ปะการังเทียม ${where}`,
+      province: reef.province,
+      lat: reef.lat,
+      lon: reef.lon,
+      depth_m: reef.depth_m,
+    });
+  });
+
+  (marks && marks.marks ? marks.marks : []).forEach((mark, index) => {
+    sites.push({
+      key: `mark:${index}`,
+      kind: 'mark',
+      label: mark.name,
+      name: mark.name,
+      province: mark.province,
+      lat: mark.lat,
+      lon: mark.lon,
+      depth_m: null,
+    });
+  });
+
+  return sites;
+}
+
+/* เลือกปะการังเทียมหรือหมายเป็นจุดที่จะดูสภาพอากาศและคะแนน
+   ใช้พิกัดของจุดนั้นตรง ๆ ไม่ใช่พิกัดอ้างอิงของอำเภอ เพราะห่างกันได้สิบกว่ากิโล
+   ซึ่งมากพอให้ความสูงคลื่นต่างกันจริง */
+function pickSite(key) {
+  const site = mapSites.find((item) => item.key === key);
+  if (!site) return;
+
+  spotMap.setSelectedSite(key);
+  spotMap.setSelected(null);
+
+  const detail = [
+    isFiniteNumber(site.depth_m) ? `ลึก ${site.depth_m} ม.` : '',
+    `${roundTo(site.lat, 4)}, ${roundTo(site.lon, 4)}`,
+  ].filter(Boolean).join(' · ');
+
+  applyLocation({
+    id: '',
+    lat: site.lat,
+    lon: site.lon,
+    label: site.name,
+    province: site.province,
+    coast: '',
+    detail,
+    isReference: false,
+  });
+
+  spotMap.focus(site.lat, site.lon, 0.5);
+  renderPlaceList();
+}
+
 /* ── การเปิด-ปิดแผงและการโต้ตอบ ───────────────────────────────────────── */
 
 async function openPlacePicker() {
@@ -781,26 +1017,11 @@ async function openPlacePicker() {
   if (!spotMap) {
     spotMap = new SpotMap(document.getElementById('spotMap'));
     spotMap.onPick = pickPlace;
+    spotMap.onPickSite = pickSite;
     spotMap.reset();
 
-    try {
-      const response = await fetch(`map/coastline-south.json?v=${APP_VERSION}`);
-      if (response.ok) spotMap.setCoastline(await response.json());
-    } catch (error) {
-      /* ไม่มีชายฝั่งก็ยังเลือกจากรายการได้ แผนที่แค่ว่างเปล่า */
-    }
+    await loadMapLayers();
 
-    // เส้นความลึกเป็นของแถม โหลดไม่ได้ก็ยังเลือกหมายได้ตามปกติ
-    try {
-      const response = await fetch(`map/depth-south.json?v=${APP_VERSION}`);
-      if (response.ok) {
-        const depth = await response.json();
-        spotMap.setDepth(depth);
-        renderDepthLegend(depth);
-      }
-    } catch (error) {
-      /* ไม่มีเส้นความลึกก็ไม่เป็นไร แผนที่ยังใช้เลือกจุดได้ */
-    }
     if (activeLocation.isGps) spotMap.setOrigin({ lat: activeLocation.lat, lon: activeLocation.lon });
   }
 
@@ -1103,7 +1324,7 @@ async function loadScore() {
     const payload = await fetchJson('api/score.php', {
       lat: activeLocation.lat,
       lon: activeLocation.lon,
-      date: isoDate(new Date()),
+      date: activeDate,
     });
     renderScore(payload);
   } catch (error) {
@@ -1295,7 +1516,7 @@ async function loadTides() {
     const payload = await fetchJson('api/tides.php', {
       lat: activeLocation.lat,
       lon: activeLocation.lon,
-      date: isoDate(new Date()),
+      date: activeDate,
     });
     renderTides(payload);
   } catch (error) {

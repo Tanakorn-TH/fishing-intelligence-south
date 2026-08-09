@@ -19,7 +19,7 @@ require_once __DIR__ . '/conditions.php';
 const FIS_SCORE_TZ = 'Asia/Bangkok';
 
 /** เปลี่ยนเลขนี้ทุกครั้งที่น้ำหนักหรือสูตรเปลี่ยน และต้องแก้ docs/fishing-score.md ด้วย */
-const FIS_SCORE_FORMULA_VERSION = '1.0';
+const FIS_SCORE_FORMULA_VERSION = '1.1';
 
 const FIS_SCORE_NOTICE = 'คะแนนนี้เป็นเครื่องมือช่วยวางแผน ไม่ใช่คำพยากรณ์ว่าจะได้ปลา '
     . 'น้ำหนักของแต่ละปัจจัยทีมเราเลือกเอง ยังไม่ได้ปรับจากสถิติการจับปลาจริง '
@@ -120,7 +120,7 @@ function fis_score_styles(): array
             'tagline' => 'ไลท์จิ๊ก ไลท์ร็อค อุปกรณ์เบา',
             'weights' => [
                 'wind_calm' => 0.30,
-                'water_movement' => 0.20,
+                'water_moderate' => 0.20,
                 'wave_calm' => 0.20,
                 'light_phase' => 0.15,
                 'solunar' => 0.10,
@@ -133,7 +133,7 @@ function fis_score_styles(): array
             'weights' => [
                 'wind_calm' => 0.30,
                 'wave_calm' => 0.25,
-                'water_movement' => 0.15,
+                'water_moderate' => 0.15,
                 'light_phase' => 0.15,
                 'solunar' => 0.10,
                 'dry' => 0.05,
@@ -147,6 +147,7 @@ function fis_score_factor_labels(): array
 {
     return [
         'water_movement' => 'แรงการไหลของน้ำ',
+        'water_moderate' => 'น้ำเดินกำลังดี',
         'tidal_range' => 'น้ำเกิด-น้ำตาย',
         'moon_darkness' => 'ความมืดของคืน',
         'solunar' => 'ช่วง Solunar',
@@ -164,11 +165,14 @@ function fis_score_factor_labels(): array
  */
 function fis_score_factors(array $weather, array $tides, array $solunar, DateTimeImmutable $at, DateTimeZone $tz): array
 {
-    $current = $weather['data']['current'] ?? [];
+    // ต้องเป็นสภาพอากาศของ "เวลาที่กำลังประเมิน" ไม่ใช่ของตอนนี้
+    // เดิมอ่าน data.current ตรง ๆ ทำให้คะแนนของวันข้างหน้าใช้ลมและคลื่นของวันนี้
+    $current = fis_weather_conditions_at($weather, $at);
     $series = $tides['data']['series'] ?? [];
 
     return [
         'water_movement' => fis_score_water_movement($series, $at),
+        'water_moderate' => fis_score_water_moderate($series, $at),
         'tidal_range' => fis_score_tidal_range($series),
         'moon_darkness' => fis_score_moon_darkness($solunar),
         'solunar' => fis_score_solunar($solunar, $at),
@@ -234,6 +238,55 @@ function fis_score_water_movement(array $series, DateTimeImmutable $at): array
     return [
         'value' => $value,
         'note' => sprintf('%s %.2f ม./ชม. (แรงสุดของวันนี้ %.2f)', $word, $rate, $peak),
+    ];
+}
+
+/**
+ * แรงการไหลของน้ำแบบ "กำลังดี" สำหรับอุปกรณ์เบา
+ *
+ * `water_movement` เป็นแบบยิ่งแรงยิ่งดี ซึ่งถูกสำหรับงานหน้าดิน จิ๊กกิ้ง ป๊อปปิ้ง
+ * แต่ผิดสำหรับชิงหลิวกับไลท์เกม น้ำนิ่งสนิทปลาไม่กินก็จริง
+ * แต่น้ำแรงจัดทำให้ทุ่นถูกลากจม สายเป็นท้องช้าง และเหยื่อเบาคุมไม่อยู่
+ * สองงานนี้จึงต้องการช่วงกลาง ไม่ใช่ปลายทั้งสองข้าง
+ *
+ * รูปเส้น: ราบที่ 1.0 เมื่อแรงน้ำอยู่ระหว่าง 30-70% ของแรงสุดในวันนั้น
+ * แล้วลาดเป็นเส้นตรงลงไปแตะพื้น 0.25 ที่ปลายทั้งสองข้าง
+ *
+ * ทำไมพื้นไม่เป็น 0: น้ำนิ่งหรือน้ำแรงจัดทำให้ "ยากขึ้น" ไม่ใช่ "ตกไม่ได้"
+ * การให้ศูนย์จะทำให้ปัจจัยเดียวลากคะแนนทั้งงานลงจนตัวอื่นไม่มีความหมาย
+ *
+ * ตัวเลขขอบเขตมาจากการตัดสินใจของทีม เหมือนน้ำหนักตัวอื่นในเอกสาร
+ * ยังไม่ได้ปรับจากสถิติการจับปลาจริง
+ */
+const FIS_SCORE_MODERATE_LOW = 0.30;
+const FIS_SCORE_MODERATE_HIGH = 0.70;
+const FIS_SCORE_MODERATE_FLOOR = 0.25;
+
+function fis_score_water_moderate(array $series, DateTimeImmutable $at): array
+{
+    // ใช้ตัวเดียวกับ water_movement เพื่อให้สองปัจจัยอ่านแรงน้ำจากค่าเดียวกันเสมอ
+    // ถ้าคำนวณแยกกัน สักวันจะแก้ตัวหนึ่งแล้วลืมอีกตัว
+    $flow = fis_score_water_movement($series, $at);
+    $fraction = $flow['value'];
+
+    if ($fraction >= FIS_SCORE_MODERATE_LOW && $fraction <= FIS_SCORE_MODERATE_HIGH) {
+        return ['value' => 1.0, 'note' => 'น้ำเดินกำลังดีสำหรับอุปกรณ์เบา'];
+    }
+
+    if ($fraction < FIS_SCORE_MODERATE_LOW) {
+        $ratio = $fraction / FIS_SCORE_MODERATE_LOW;
+        $value = FIS_SCORE_MODERATE_FLOOR + (1.0 - FIS_SCORE_MODERATE_FLOOR) * $ratio;
+        return [
+            'value' => fis_score_clamp($value),
+            'note' => 'น้ำเบากว่าที่ควร เหยื่อไม่ค่อยไหลไปหาปลา',
+        ];
+    }
+
+    $ratio = (1.0 - $fraction) / (1.0 - FIS_SCORE_MODERATE_HIGH);
+    $value = FIS_SCORE_MODERATE_FLOOR + (1.0 - FIS_SCORE_MODERATE_FLOOR) * $ratio;
+    return [
+        'value' => fis_score_clamp($value),
+        'note' => 'น้ำแรงเกินไปสำหรับทุ่นและเหยื่อเบา',
     ];
 }
 

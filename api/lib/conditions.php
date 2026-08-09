@@ -29,6 +29,15 @@ const FIS_TIDES_CACHE_TTL = 1800;
 const FIS_TIDES_MAX_AHEAD_DAYS = 7;
 const FIS_TIDES_MAX_BACK_DAYS = 365;
 
+/* จำนวนวันพยากรณ์ที่หน้าเว็บใช้แสดงผล กับเพดานที่ยอมให้ขอได้
+   เพดานผูกกับ FIS_TIDES_MAX_AHEAD_DAYS เพราะคะแนนต้องมีทั้งลมและน้ำถึงจะคิดได้
+   ขอลมล่วงหน้าไกลกว่าที่มีข้อมูลน้ำจึงไม่มีประโยชน์ (+1 เผื่อวันปลายที่ต้องใช้ถึงเที่ยงคืน)
+
+   ต้องประกาศหลัง FIS_TIDES_MAX_AHEAD_DAYS — const ที่คำนวณจาก const อื่น
+   ต้องเห็นตัวที่อ้างถึงก่อน ไม่งั้น PHP จะตาย "Undefined constant" ตั้งแต่โหลดไฟล์ */
+const FIS_WEATHER_PANEL_DAYS = 2;
+const FIS_WEATHER_MAX_DAYS = FIS_TIDES_MAX_AHEAD_DAYS + 1;
+
 const FIS_SOLUNAR_TZ = '+07:00';
 
 const FIS_TIDES_NOTICE = 'ระดับน้ำอ้างอิงระดับน้ำทะเลปานกลาง (MSL) ไม่ใช่ระดับน้ำลงต่ำสุด (chart datum) '
@@ -116,25 +125,28 @@ function fis_weather_iso(?string $localTime, DateTimeZone $tz): ?string
  * @return array{data: array<string, mixed>, fetched_at: string, cached: bool}
  * @throws FisRemoteException เมื่อแหล่งข้อมูลล้มจริง ๆ
  */
-function fis_weather_payload(float $lat, float $lon): array
+function fis_weather_payload(float $lat, float $lon, int $days = FIS_WEATHER_PANEL_DAYS): array
 {
     $lat = round($lat, 2);
     $lon = round($lon, 2);
+    $days = max(1, min(FIS_WEATHER_MAX_DAYS, $days));
 
-    $cacheKey = sprintf('weather:%.2f:%.2f', $lat, $lon);
+    // จำนวนวันอยู่ในกุญแจแคชด้วย ไม่งั้นคำขอของหน้าเว็บที่ขอ 2 วัน
+    // จะไปคืนให้ตัวคิดคะแนนที่ต้องการ 8 วัน แล้วชั่วโมงที่ต้องใช้จะหายไปเงียบ ๆ
+    $cacheKey = sprintf('weather:%.2f:%.2f:%dd', $lat, $lon, $days);
     $payload = fis_cache_get($cacheKey, FIS_WEATHER_CACHE_TTL);
     if ($payload !== null) {
         $payload['cached'] = true;
         return $payload;
     }
 
-    $forecast = fis_remote_get_json(fis_weather_forecast_url($lat, $lon), 8);
+    $forecast = fis_remote_get_json(fis_weather_forecast_url($lat, $lon, $days), 8);
 
     // คลื่นล้มได้โดยไม่ทำให้ทั้งชุดล้ม จึงจับ exception แยกและให้เวลาน้อยกว่า
     // เพื่อไม่ให้ของแถมกินเวลาของคำขอทั้งก้อน
     $marine = null;
     try {
-        $marine = fis_remote_get_json(fis_weather_marine_url($lat, $lon), 5);
+        $marine = fis_remote_get_json(fis_weather_marine_url($lat, $lon, $days), 5);
     } catch (FisRemoteException $e) {
         error_log('[fishing-api/weather] marine ใช้ไม่ได้ จะคืนความสูงคลื่นเป็น null: ' . $e->getMessage());
     }
@@ -146,7 +158,7 @@ function fis_weather_payload(float $lat, float $lon): array
     return $payload;
 }
 
-function fis_weather_forecast_url(float $lat, float $lon): string
+function fis_weather_forecast_url(float $lat, float $lon, int $days): string
 {
     return 'https://api.open-meteo.com/v1/forecast?' . http_build_query([
         'latitude' => sprintf('%.2f', $lat),
@@ -158,11 +170,12 @@ function fis_weather_forecast_url(float $lat, float $lon): string
         'wind_speed_unit' => 'kmh',
         'timezone' => FIS_WEATHER_TZ,
         // 2 วันพอให้เหลือครบ 24 ชั่วโมงข้างหน้าแม้จะเรียกตอนเกือบเที่ยงคืน
-        'forecast_days' => 2,
+        // แต่การคิดคะแนนล่วงหน้าต้องขอมากกว่านั้น จึงให้ผู้เรียกกำหนดเอง
+        'forecast_days' => $days,
     ], '', '&', PHP_QUERY_RFC3986);
 }
 
-function fis_weather_marine_url(float $lat, float $lon): string
+function fis_weather_marine_url(float $lat, float $lon, int $days): string
 {
     return 'https://marine-api.open-meteo.com/v1/marine?' . http_build_query([
         'latitude' => sprintf('%.2f', $lat),
@@ -170,7 +183,7 @@ function fis_weather_marine_url(float $lat, float $lon): string
         'current' => 'wave_height',
         'hourly' => 'wave_height',
         'timezone' => FIS_WEATHER_TZ,
-        'forecast_days' => 2,
+        'forecast_days' => $days,
     ], '', '&', PHP_QUERY_RFC3986);
 }
 
@@ -228,6 +241,26 @@ function fis_weather_build(array $forecast, ?array $marine): array
         ];
     }
 
+    /* ตารางพยากรณ์รายชั่วโมงแบบเต็มช่วง ไม่ตัดที่ FIS_WEATHER_HOURS
+       ใช้ตอนคิดคะแนนของวันอื่นที่ไม่ใช่วันนี้ ซึ่งต้องหยิบลมและคลื่นของชั่วโมงนั้นจริง ๆ
+       เก็บแยกจาก data.hourly เพราะสัญญาของ /api/weather.php ระบุไว้แค่ 24 แถว
+       ถ้าไปยัดรวมกัน ผู้ใช้ endpoint เดิมจะได้ payload ที่ใหญ่ขึ้นโดยไม่ได้ขอ */
+    $byHour = [];
+    for ($i = 0; $i < $count; $i++) {
+        $key = is_string($times[$i]) ? substr($times[$i], 0, 13) : null;
+        if ($key === null) {
+            continue;
+        }
+        $byHour[$key] = [
+            'wind_speed_kmh' => fis_weather_float($forecast['hourly']['wind_speed_10m'][$i] ?? null),
+            'wind_direction_deg' => fis_weather_int($forecast['hourly']['wind_direction_10m'][$i] ?? null),
+            'wave_height_m' => $waves[$times[$i]] ?? null,
+            'precipitation_probability_pct' => fis_weather_int($forecast['hourly']['precipitation_probability'][$i] ?? null),
+            'temperature_c' => fis_weather_float($forecast['hourly']['temperature_2m'][$i] ?? null),
+            'pressure_hpa' => fis_weather_float($forecast['hourly']['pressure_msl'][$i] ?? null),
+        ];
+    }
+
     $windDeg = fis_weather_int($current['wind_direction_10m'] ?? $forecast['hourly']['wind_direction_10m'][$startIndex] ?? null);
 
     // โอกาสฝนไม่มีในบล็อก current ของ Open-Meteo จึงต้องหยิบจากแถวรายชั่วโมงของชั่วโมงปัจจุบัน
@@ -252,12 +285,59 @@ function fis_weather_build(array $forecast, ?array $marine): array
             ],
             'hourly' => $hourly,
         ],
+        'by_hour' => $byHour,
         // เก็บ sunrise/sunset แยกไว้ให้ score.php ใช้ ไม่ยัดลง data เพราะสัญญาของ weather ไม่ได้ระบุไว้
         'sun' => [
             'sunrise' => is_array($forecast['daily']['sunrise'] ?? null) ? $forecast['daily']['sunrise'] : [],
             'sunset' => is_array($forecast['daily']['sunset'] ?? null) ? $forecast['daily']['sunset'] : [],
         ],
         'fetched_at' => (new DateTimeImmutable('now', $tz))->format('c'),
+    ];
+}
+
+/**
+ * สภาพอากาศ ณ เวลาที่ระบุ ในรูปแบบเดียวกับบล็อก current
+ *
+ * ทำไมต้องมี: ตัวคิดคะแนนเคยอ่าน data.current เสมอ แปลว่าคะแนนของวันศุกร์หน้า
+ * ใช้ลมและคลื่นของ "ตอนนี้" ซึ่งไม่เกี่ยวกันเลย ตอนที่ยังไม่มีตัวเลือกวันที่
+ * ความผิดนี้ไม่มีใครเห็น แต่พอเลือกวันได้เมื่อไหร่มันจะกลายเป็นการโกหกทันที
+ *
+ * ถ้าไม่มีแถวของชั่วโมงนั้น (เช่นขอไกลเกินกว่าที่พยากรณ์ให้มา) จะคืน current
+ * พร้อมธง estimated เพื่อให้ผู้เรียกบอกผู้ใช้ได้ว่าค่านี้ไม่ใช่ของวันนั้นจริง ๆ
+ *
+ * @param array<string, mixed> $payload ผลจาก fis_weather_payload
+ * @return array<string, mixed>
+ */
+function fis_weather_conditions_at(array $payload, DateTimeImmutable $at): array
+{
+    $current = $payload['data']['current'] ?? [];
+    $byHour = $payload['by_hour'] ?? [];
+
+    $key = $at->format('Y-m-d\TH');
+
+    // ชั่วโมงปัจจุบันใช้บล็อก current เสมอ เพราะเป็นค่าที่ปลายทางวิเคราะห์ล่าสุดจริง ๆ
+    // ส่วนแถวรายชั่วโมงเป็นค่าพยากรณ์ของชั่วโมงนั้น ซึ่งใกล้กันแต่ไม่เท่ากัน
+    // ถ้าเปลี่ยนมาใช้แถวพยากรณ์กับวันนี้ด้วย คะแนนของวันนี้จะขยับโดยไม่มีเหตุผลให้ผู้ใช้
+    $observed = is_string($current['observed_at'] ?? null) ? substr($current['observed_at'], 0, 13) : null;
+    if ($observed !== null && $observed === $key) {
+        return $current + ['estimated' => false];
+    }
+
+    if (!isset($byHour[$key])) {
+        return $current + ['estimated' => true];
+    }
+
+    $row = $byHour[$key];
+    return [
+        'observed_at' => $at->format('Y-m-d\TH:00:00P'),
+        'temperature_c' => $row['temperature_c'],
+        'wind_speed_kmh' => $row['wind_speed_kmh'],
+        'wind_direction_deg' => $row['wind_direction_deg'],
+        'wind_direction_label' => fis_weather_direction_label($row['wind_direction_deg']),
+        'wave_height_m' => $row['wave_height_m'],
+        'precipitation_probability_pct' => $row['precipitation_probability_pct'],
+        'pressure_hpa' => $row['pressure_hpa'],
+        'estimated' => false,
     ];
 }
 
