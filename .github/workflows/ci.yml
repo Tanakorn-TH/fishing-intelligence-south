@@ -35,6 +35,11 @@ jobs:
       - name: ตรวจว่าเลขเวอร์ชันตรงกันทุกที่
         run: node scripts/check-version.mjs
 
+      # Safari ก่อน 16.4 ทิ้งทั้งบล็อกเงียบ ๆ เมื่อเจอ media query แบบ range syntax
+      # ไม่มี error ให้เห็น กฎข้างในหายทั้งก้อน — ite-avm เคยเสียเวลาไล่หาสาเหตุนี้มาแล้ว
+      - name: ตรวจไวยากรณ์ media query ว่าปลอดภัยกับ Safari เก่า
+        run: node scripts/check-media-queries.mjs
+
       - name: ตรวจ HTML ตามสเปกและ accessibility
         run: npx --yes html-validate@9 index.html
 

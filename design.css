@@ -1969,3 +1969,121 @@ body {
   .liquid-btn:has(.liquid-btn-face:active) { transform: none; }
   .liquid-btn > .liquid-btn-face:hover { transform: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ระยะกันติ่งจอ · โทเคนเลย์เอาต์ · พื้นที่กดบนเรือ
+   ทำตาม docs/design.md §7.1 และ §7.4
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* เว็บนี้ยังไม่มีระบบย่อ/ขยาย UI แต่ประกาศไว้ให้สูตรข้างล่างคำนวณได้จริง
+     ถ้าวันหนึ่งเพิ่ม zoom: var(--ui-scale) ที่ html ระยะกันติ่งจะถูกต้องเอง
+
+     ⚠️ ห้ามลบบรรทัดนี้ — calc() ที่อ้างตัวแปรที่ไม่มีจะกลายเป็นค่าไม่ถูกต้อง
+        แล้วถูกทิ้งทั้งบรรทัดโดยไม่มี error ให้เห็น ผลคือระยะกันติ่งเป็น 0 เงียบ ๆ
+        ซึ่งบนไอโฟนแปลว่าเนื้อหาไปอยู่ใต้ติ่งกล้อง */
+  --ui-scale: 1;
+
+  /* env() คืนพิกเซลจริงของจอ ส่วนทุกอย่างใต้ <html> โดนตัวคูณซูมอีกที
+     หารทิ้งก่อน พอโดนคูณกลับจึงได้ระยะจริงเท่าเดิม
+     ใส่ค่าสำรอง 0px ไว้ด้วย เบราว์เซอร์ที่ไม่รู้จัก safe-area จะได้ไม่ตกทั้งบรรทัด */
+  --sa-t: calc(env(safe-area-inset-top, 0px) / var(--ui-scale));
+  --sa-r: calc(env(safe-area-inset-right, 0px) / var(--ui-scale));
+  --sa-b: calc(env(safe-area-inset-bottom, 0px) / var(--ui-scale));
+  --sa-l: calc(env(safe-area-inset-left, 0px) / var(--ui-scale));
+
+  /* โทเคนเลย์เอาต์ — ของลอยอ้างตัวแปร ไม่ใช่ตัวเลขกระจายห้าที่ */
+  --rail: 254px;
+  --topbar-h: 86px;
+}
+
+@media(max-width:1050px) { :root { --rail: 210px; } }
+@media(max-width:780px)  { :root { --rail: 0px; --topbar-h: 67px; } }
+
+/* index.html ตั้ง viewport-fit=cover ไว้ แปลว่าเบราว์เซอร์เลิกกันระยะให้แล้ว
+   ต้องกันเอง — กันที่ body ที่เดียวได้ทั้งหน้ารวมแถบข้างที่เป็น sticky */
+body {
+  padding-left: var(--sa-l);
+  padding-right: var(--sa-r);
+}
+
+/* ของที่เป็น fixed วัดจากกรอบจอ ไม่ใช่จาก body จึงไม่ได้ padding ข้างบนไปด้วย
+   ต้องกันเองทีละตัว */
+.safe-x {
+  padding-left: var(--sa-l);
+  padding-right: var(--sa-r);
+}
+
+.toast { bottom: calc(24px + var(--sa-b)); }
+
+.site-footer { padding-bottom: calc(8px + var(--sa-b)); }
+
+/* กล่องโต้ตอบกว้างตาม 100vw ซึ่งไม่รู้เรื่องติ่งจอ ต้องหักออกเอง */
+.planner-dialog {
+  width: min(760px, calc(100vw - 30px - var(--sa-l) - var(--sa-r)));
+}
+
+/* แผงเลือกสถานที่กินเต็มจอ จึงต้องกันครบทั้งสี่ด้าน */
+.place-picker {
+  padding-left: var(--sa-l);
+  padding-right: var(--sa-r);
+  padding-bottom: var(--sa-b);
+}
+
+/* ส่วนเนื้อหาคำนวณความกว้างจาก 100vw ลบความกว้างแถบข้าง
+   ต้องลบระยะกันติ่งด้วย ไม่งั้นหน้าจะล้นแนวนอนตอนถือแนวนอนบนไอโฟน
+   ใช้เฉพาะช่วงที่ยังมีแถบข้างอยู่ ต่ำกว่านั้น styles.css ตั้ง width:100% ซึ่งถูกอยู่แล้ว */
+@media(min-width:781px) {
+  main { width: min(1370px, calc(100vw - var(--rail) - var(--sa-l) - var(--sa-r))); }
+}
+
+/* ═══ พื้นที่กดบนเรือ ═════════════════════════════════════════════════
+   ตรวจด้วย pointer: coarse ไม่ใช่ความกว้างจอ เพราะแท็บเล็ตจอใหญ่ก็ใช้นิ้ว
+   คนใช้งานยืนอยู่บนเรือที่โคลง เล็งยาก ปุ่มต้องกว้างพอ
+
+   ขยายด้วย ::after ที่วางทับตรงกลาง ไม่ใช่การเพิ่มขนาดกล่องจริง
+   เพราะปุ่มพวกนี้อยู่ในแถวที่จัดระยะไว้แล้ว ถ้ากล่องโตขึ้นแถวจะเสียสัดส่วน
+   วิธีนี้พื้นที่กดโตแต่ภาพที่เห็นเท่าเดิมเป๊ะ */
+@media (pointer: coarse) {
+  .score-info,
+  .dots,
+  .menu-button,
+  .date-control,
+  .notification,
+  .state-retry,
+  .gear-submit,
+  .gear-style,
+  .month-control,
+  .close-planner,
+  .change-spot,
+  .link-button {
+    position: relative;
+  }
+
+  .score-info::after,
+  .dots::after,
+  .menu-button::after,
+  .date-control::after,
+  .notification::after,
+  .state-retry::after,
+  .gear-submit::after,
+  .gear-style::after,
+  .month-control::after,
+  .close-planner::after,
+  .change-spot::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+  }
+
+  /* ช่องกรอกโตได้จริงโดยไม่กระทบใคร จึงเพิ่มความสูงตรง ๆ */
+  .gear-depth input { min-height: 44px; }
+
+  /* ปุ่มบนแถบบนอยู่ติดกัน พอกรอบกดโตขึ้นทั้งคู่จะเริ่มทับกัน
+     เพิ่มช่องไฟให้พอที่ปุ่มขวาไม่ไปกินขอบของปุ่มซ้าย */
+  .top-actions { gap: 14px; }
+}
