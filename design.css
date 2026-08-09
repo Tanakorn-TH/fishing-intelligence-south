@@ -2104,3 +2104,125 @@ body {
      เพิ่มช่องไฟให้พอที่ปุ่มขวาไม่ไปกินขอบของปุ่มซ้าย */
   .top-actions { gap: 14px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ระบบปุ่ม — docs/design.md §5
+   ก่อนหน้านี้ปุ่ม 26 คลาสต่างคนต่างเขียน วัดได้ว่ามี border-radius 10 ค่า
+   และ font-size 12 ค่า ระบบนี้ยุบให้เหลือชุดเดียวที่ทุกปุ่มอ้างถึง
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── ปุ่มเน้น (tonal) ────────────────────────────────────────────────
+     ธีมมืดกลับด้านกับสูตรของ ite-avm ที่เขียนไว้สำหรับพื้นสว่าง
+     ของเขา = พื้นฟ้าอ่อน + ตัวอักษรฟ้าเข้ม · ของเรา = พื้น aqua โปร่ง + ตัวอักษร aqua สว่าง
+     หลักการเดียวกันคือ "ไล่เฉดแทนการถมทึบ" ได้ปุ่มที่เด่นโดยไม่ตะโกน */
+  --btn-tonal-top: rgba(64, 222, 210, .22);
+  --btn-tonal-bot: rgba(64, 222, 210, .11);
+  --btn-tonal-ink: #a6f5ee;
+
+  --btn-radius: 9999px;      /* pill ตามค่าที่เอกสารบอกว่ายกมาได้ทันที */
+  --btn-radius-icon: 12px;
+  --btn-pad: .625rem 1.25rem;
+  --btn-font: 14px;
+  --btn-gap: .5rem;
+}
+
+/* ── ฐานร่วมของทุกปุ่ม ─────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--btn-gap);          /* ไอคอนอยู่ซ้ายเสมอ */
+  padding: var(--btn-pad);
+  border: 1px solid transparent;
+  border-radius: var(--btn-radius);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--btn-font);
+  font-weight: 500;
+  line-height: 1.4;            /* ไทยซ้อนสระบน ต่ำกว่านี้วรรณยุกต์ชน */
+  cursor: pointer;
+  text-decoration: none;
+  /* ⚠️ ใช้ translate: แยกจาก transform: เพราะ .press ใช้ transform: scale ตอนกด
+     ถ้าเขียน transform ทั้งคู่ hover จะลบ active ทิ้ง (บทเรียนจาก ite-avm) */
+  transition: background-color .18s ease, border-color .18s ease, filter .18s ease;
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: .55;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ── ระดับ 1 เน้น — ปุ่มเดียวต่อหน้าจอที่อยากให้กด ──────────────────── */
+.btn-tonal {
+  background: linear-gradient(180deg, var(--btn-tonal-top), var(--btn-tonal-bot));
+  border-color: rgba(64, 222, 210, .3);
+  color: var(--btn-tonal-ink);
+  font-weight: 600;
+}
+
+/* hover ปรับด้วย filter ไม่เปลี่ยนค่าสี ตามที่เอกสารกำหนด */
+.btn-tonal:hover { filter: saturate(1.12) brightness(1.06); }
+
+/* ── ระดับ 2 ปกติ — action รอง ──────────────────────────────────────── */
+.btn-ghost {
+  background-color: var(--glass-bg);
+  border-color: var(--glass-line);
+  border-top-color: var(--glass-line-top);
+  color: #cfe6e8;
+}
+
+.btn-ghost:hover { background-color: rgba(255, 255, 255, .11); }
+
+/* ── ระดับ 3 ข้อความ — ยกเลิก รองที่สุด ────────────────────────────── */
+.btn-text {
+  padding: .5rem .75rem;
+  border-color: transparent;
+  color: var(--aqua);
+  font-weight: 500;
+}
+
+.btn-text:hover { background-color: rgba(64, 222, 210, .1); }
+
+/* ── ปุ่มไอคอน — เว็บนี้มีเยอะกว่า ite-avm จึงแยกออกมาเป็นระดับของตัวเอง ── */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--glass-line);
+  border-top-color: var(--glass-line-top);
+  border-radius: var(--btn-radius-icon);
+  background-color: var(--glass-bg);
+  color: #b6d4d5;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color .18s ease, border-color .18s ease;
+}
+
+.icon-btn:hover { background-color: rgba(255, 255, 255, .11); }
+
+/* ── พื้นที่กดขั้นต่ำ ──────────────────────────────────────────────────
+   ite-avm เขียนคอมเมนต์ว่ายกให้ถึง 44px แต่ในบล็อกนั้นไม่มี min-height เลย
+   ผลจริงของเขาคือปุ่มมาตรฐาน ~41.7px และปุ่มไอคอน 36px ซึ่งต่ำกว่า WCAG 2.5.8
+   เว็บเราเติมให้จบ เพราะผู้ใช้อยู่บนเรือ มือเปียก เรือโคลง */
+@media (pointer: coarse) {
+  .btn,
+  .icon-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* เครื่องหมายกากบาทเดิมตั้งไว้ 30px ซึ่งใหญ่กว่ากล่องไอคอน 36px จนเนื้อหาล้น
+   ลดขนาด glyph ไม่ใช่ขยายกล่อง เพราะกล่องต้องเท่าปุ่มไอคอนตัวอื่นทั้งหมด */
+.close-planner.icon-btn,
+.close-picker.icon-btn,
+.close-date.icon-btn {
+  font-size: 20px;
+}
