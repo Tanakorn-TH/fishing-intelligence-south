@@ -156,6 +156,21 @@ jobs:
       - name: ทดสอบ solunar (คำนวณในระบบ ไม่ต้องต่อเน็ต)
         run: API_BASE=http://127.0.0.1:8080 php tests/solunar-test.php
 
+      # วัดพื้นที่กดกับเซิร์ฟเวอร์ตัวเดียวกับข้างบน ไม่ใช่ static server
+      # ส่วนที่รอข้อมูลจาก API จะถูกวาดจริง จึงวัดได้ครบ — เคยพลาดเพราะวัดบน
+      # static server แล้วอิลิเมนต์ครึ่งหนึ่งไม่ถูกสร้างขึ้นมาเลย
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: ติดตั้งเบราว์เซอร์สำหรับวัดพื้นที่กด
+        run: |
+          npm install --no-save playwright@1
+          npx playwright install --with-deps chromium
+
+      - name: ตรวจพื้นที่กดที่ 390 / 820 / 1280
+        run: TAP_BASE=http://127.0.0.1:8080 node scripts/check-tap-targets.mjs
+
       - name: log ของเซิร์ฟเวอร์ ถ้าเทสต์ล้ม
         if: failure()
         run: cat /tmp/php-server.log
