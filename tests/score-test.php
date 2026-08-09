@@ -109,7 +109,7 @@ const EXPECTED_STYLES = ['squid', 'bottom', 'jigging', 'popping', 'trolling', 's
 
 /** ปัจจัยร่วมทั้งหมดที่เอกสารระบุ */
 const EXPECTED_FACTORS = [
-    'water_movement', 'water_moderate', 'tidal_range', 'moon_darkness', 'solunar',
+    'water_movement', 'water_moderate', 'sea_front', 'tidal_range', 'moon_darkness', 'solunar',
     'light_phase', 'wind_calm', 'wave_calm', 'dry',
 ];
 
@@ -120,15 +120,15 @@ const EXPECTED_FACTORS = [
  */
 const DOC_WEIGHTS = [
     'squid' => ['moon_darkness' => 0.30, 'wind_calm' => 0.25, 'water_movement' => 0.15,
-                'wave_calm' => 0.15, 'light_phase' => 0.10, 'dry' => 0.05],
-    'bottom' => ['water_movement' => 0.30, 'wave_calm' => 0.25, 'wind_calm' => 0.20,
-                 'tidal_range' => 0.10, 'solunar' => 0.10, 'dry' => 0.05],
-    'jigging' => ['water_movement' => 0.30, 'light_phase' => 0.20, 'wave_calm' => 0.20,
-                  'wind_calm' => 0.15, 'tidal_range' => 0.10, 'solunar' => 0.05],
-    'popping' => ['water_movement' => 0.30, 'tidal_range' => 0.20, 'light_phase' => 0.20,
-                  'wind_calm' => 0.15, 'wave_calm' => 0.10, 'solunar' => 0.05],
-    'trolling' => ['wave_calm' => 0.30, 'wind_calm' => 0.25, 'water_movement' => 0.15,
-                   'light_phase' => 0.15, 'dry' => 0.10, 'solunar' => 0.05],
+                'wave_calm' => 0.10, 'light_phase' => 0.10, 'sea_front' => 0.05, 'dry' => 0.05],
+    'bottom' => ['water_movement' => 0.30, 'wave_calm' => 0.20, 'wind_calm' => 0.20,
+                 'tidal_range' => 0.10, 'solunar' => 0.10, 'sea_front' => 0.05, 'dry' => 0.05],
+    'jigging' => ['water_movement' => 0.30, 'wave_calm' => 0.20, 'light_phase' => 0.15,
+                  'wind_calm' => 0.15, 'tidal_range' => 0.10, 'sea_front' => 0.05, 'solunar' => 0.05],
+    'popping' => ['water_movement' => 0.30, 'tidal_range' => 0.15, 'light_phase' => 0.15,
+                  'wind_calm' => 0.15, 'sea_front' => 0.10, 'wave_calm' => 0.10, 'solunar' => 0.05],
+    'trolling' => ['wave_calm' => 0.25, 'wind_calm' => 0.25, 'water_movement' => 0.15,
+                   'light_phase' => 0.15, 'sea_front' => 0.10, 'dry' => 0.05, 'solunar' => 0.05],
     'shore' => ['water_movement' => 0.30, 'light_phase' => 0.25, 'tidal_range' => 0.15,
                 'dry' => 0.10, 'wind_calm' => 0.10, 'wave_calm' => 0.10],
     'lightgame' => ['wind_calm' => 0.30, 'water_moderate' => 0.20, 'wave_calm' => 0.20,
@@ -580,6 +580,68 @@ $weakGear = fis_score_water_moderate($strongFlow, $curveAt)['value'];
 $heavyGear = fis_score_water_movement($strongFlow, $curveAt)['value'];
 check('น้ำแรงสุด: อุปกรณ์เบาได้คะแนนน้อยกว่างานที่ชอบน้ำแรง',
       $weakGear < $heavyGear, "เบา {$weakGear} หนัก {$heavyGear}");
+
+echo "\n=== แนวน้ำ (sea_front) ===\n";
+
+/* สร้าง payload ปลอมของ Marine API แบบหลายพิกัด เพื่อคุมความชันได้เอง
+   ทดสอบผ่าน HTTP ไม่ได้ เพราะความชันจริงขึ้นกับทะเลวันนั้นซึ่งเราคุมไม่ได้ */
+function fis_test_marine(float $northTemp, float $southTemp, float $eastTemp, float $westTemp): array
+{
+    $point = static function (float $lat, float $lon, float $temp): array {
+        return [
+            'latitude' => $lat,
+            'longitude' => $lon,
+            'current' => ['sea_surface_temperature' => $temp],
+            'hourly' => [
+                'time' => ['2026-01-01T00:00'],
+                'sea_surface_temperature' => [$temp],
+            ],
+        ];
+    };
+
+    // เหนือ-ใต้ ห่างกัน 0.2 องศา ~ 22.2 กม. | ตะวันออก-ตะวันตก ห่างกันใกล้เคียงกัน
+    return [
+        $point(7.0, 100.0, ($northTemp + $southTemp) / 2),
+        $point(7.1, 100.0, $northTemp),
+        $point(7.0, 100.1, $eastTemp),
+        $point(6.9, 100.0, $southTemp),
+        $point(7.0, 99.9, $westTemp),
+    ];
+}
+
+$frontAt = new DateTimeImmutable('2026-01-01 00:30:00', new DateTimeZone('Asia/Bangkok'));
+
+// น้ำเท่ากันทุกทิศ = ไม่มีแนวน้ำ = พื้น 0.5 ไม่ใช่ 0
+$flat = fis_score_sea_front(['marine_raw' => fis_test_marine(30.0, 30.0, 30.0, 30.0)], $frontAt);
+check('น้ำเท่ากันทุกทิศ -> 0.50 (ไม่มีแนวน้ำ ไม่ใช่ตกไม่ได้)',
+      abs($flat['value'] - 0.5) < 0.01, 'ได้ ' . $flat['value']);
+
+/* เหนือ 31.0 ใต้ 30.0 ห่างกัน 22.24 กม. -> ความชัน 0.045 องศา/กม.
+   ซึ่งคิดเป็น 0.045/0.06 = 0.75 ของเกณฑ์ -> ค่าปัจจัย 0.5 + 0.5*0.75 = 0.875 */
+$sloped = fis_score_sea_front(['marine_raw' => fis_test_marine(31.0, 30.0, 30.5, 30.5)], $frontAt);
+check('มีแนวน้ำ -> ค่าสูงกว่าพื้น', $sloped['value'] > $flat['value'],
+      "แนวน้ำ {$sloped['value']} vs ราบ {$flat['value']}");
+check('ความชัน 0.045 องศา/กม. -> ราว 0.875', abs($sloped['value'] - 0.875) < 0.03,
+      'ได้ ' . $sloped['value']);
+
+// เกินเกณฑ์ต้องตันที่ 1.0 ไม่ใช่ทะลุ
+$strong = fis_score_sea_front(['marine_raw' => fis_test_marine(34.0, 30.0, 30.0, 30.0)], $frontAt);
+check('ความชันเกินเกณฑ์ -> ตันที่ 1.00', abs($strong['value'] - 1.0) < 0.001,
+      'ได้ ' . $strong['value']);
+
+// ไม่มีข้อมูลต้องคืนค่ากลาง ไม่ใช่เดาว่ามีแนวน้ำ
+$none = fis_score_sea_front([], $frontAt);
+check('ไม่มีข้อมูลแนวน้ำ -> 0.50 และบอกตรง ๆ ในหมายเหตุ',
+      abs($none['value'] - 0.5) < 0.001 && mb_strpos($none['note'], 'ไม่ได้') !== false,
+      $none['note']);
+
+/* งานที่ยืนบนฝั่งต้องไม่มีน้ำหนักให้แนวน้ำเลย
+   เพราะคนตกชายฝั่งไปหาแนวน้ำที่อยู่ห่างสิบกิโลไม่ได้ */
+foreach (['shore', 'float', 'lightgame'] as $styleKey) {
+    $weights = fis_score_styles()[$styleKey]['weights'];
+    check("งาน {$styleKey} ไม่ถ่วงน้ำหนักแนวน้ำ (ไปหาแนวน้ำไม่ได้)",
+          !isset($weights['sea_front']), var_export($weights['sea_front'] ?? null, true));
+}
 
 echo "\nผ่าน {$passed} ข้อ ไม่ผ่าน {$failed} ข้อ\n";
 exit($failed === 0 ? 0 : 1);

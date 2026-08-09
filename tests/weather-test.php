@@ -298,5 +298,47 @@ if (is_array($daily) && $daily !== []) {
           "ได้ {$firstDay} คาด " . date('Y-m-d'));
 }
 
+echo "\n--- แนวน้ำ (sea_front) ---\n";
+
+$front = $data['sea_front'] ?? null;
+check('มีคีย์ sea_front (เป็น object หรือ null)', array_key_exists('sea_front', $data));
+
+if (is_array($front)) {
+    foreach (['gradient_c_per_km', 'warmer_toward_deg', 'warmer_toward_label',
+              'axes_used', 'requested_km', 'baseline_km'] as $field) {
+        check("sea_front มีคีย์ {$field}", array_key_exists($field, $front));
+    }
+
+    check('ความชันไม่ติดลบ',
+          is_numeric($front['gradient_c_per_km'] ?? null) && $front['gradient_c_per_km'] >= 0,
+          var_export($front['gradient_c_per_km'] ?? null, true));
+
+    /* ความชันเกิน 1 องศา/กม. ในทะเลชายฝั่งแปลว่าคำนวณผิด ไม่ใช่ทะเลแปลก
+       ค่าที่วัดจริงในน่านน้ำเราอยู่ราว 0.004-0.06 */
+    check('ความชันอยู่ในระดับที่เป็นไปได้ (ไม่เกิน 1 องศา/กม.)',
+          !is_numeric($front['gradient_c_per_km'] ?? null) || $front['gradient_c_per_km'] <= 1.0,
+          var_export($front['gradient_c_per_km'] ?? null, true));
+
+    check('ใช้ข้อมูลอย่างน้อยหนึ่งแกน',
+          is_int($front['axes_used'] ?? null) && $front['axes_used'] >= 1 && $front['axes_used'] <= 2,
+          var_export($front['axes_used'] ?? null, true));
+
+    /* ระยะที่ใช้จริงต้องผ่านเกณฑ์ขั้นต่ำ ไม่งั้นแปลว่าเผลอหารด้วยระยะสั้นเกินไป
+       ซึ่งจะขยายทั้งความชันจริงและความคลาดเคลื่อนจากการปัดทศนิยม */
+    check('ระยะที่ใช้คิดจริงไม่ต่ำกว่า 5 กม.',
+          !is_numeric($front['baseline_km'] ?? null) || $front['baseline_km'] >= 5.0,
+          var_export($front['baseline_km'] ?? null, true));
+
+    if (is_int($front['warmer_toward_deg'] ?? null)) {
+        check('ทิศน้ำอุ่นอยู่ในช่วง 0-359 องศา',
+              $front['warmer_toward_deg'] >= 0 && $front['warmer_toward_deg'] < 360,
+              var_export($front['warmer_toward_deg'], true));
+    }
+}
+
+check('marine_raw ไม่หลุดออกไปกับคำตอบ (ก้อนใหญ่ ไม่มีใครใช้ฝั่งเบราว์เซอร์)',
+      mb_strpos((string) $r['body'], 'marine_raw') === false,
+      'พบ marine_raw ใน payload');
+
 echo "\nผ่าน {$passed} ข้อ ไม่ผ่าน {$failed} ข้อ\n";
 exit($failed === 0 ? 0 : 1);

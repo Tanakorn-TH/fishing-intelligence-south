@@ -1607,3 +1607,46 @@ body {
   line-height: 1.55;
   color: #7e9fa6;
 }
+
+/* แนวน้ำ — ความชันของอุณหภูมิรอบจุดที่เลือก
+   เข็มหมุนตามองศาจริง ชี้ไปทางที่น้ำอุ่นกว่า ซึ่งเป็นข้อมูลที่เอาไปใช้ตัดสินใจได้
+   ต่างจากตัวเลขความชันเปล่า ๆ ที่บอกแค่ว่ามีแนวน้ำหรือไม่มี */
+.sea-front {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .03);
+}
+
+.sea-front[hidden] { display: none; }
+
+.front-dial {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(79, 214, 196, .45);
+  border-radius: 50%;
+  color: #4fd6c4;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.sea-front b {
+  display: block;
+  font: 12px var(--font-mono);
+  color: #d9f2f0;
+}
+
+.sea-front small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #7e9fa6;
+}

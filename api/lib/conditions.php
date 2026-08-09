@@ -35,6 +35,27 @@ const FIS_TIDES_MAX_BACK_DAYS = 365;
 
    ต้องประกาศหลัง FIS_TIDES_MAX_AHEAD_DAYS — const ที่คำนวณจาก const อื่น
    ต้องเห็นตัวที่อ้างถึงก่อน ไม่งั้น PHP จะตาย "Undefined constant" ตั้งแต่โหลดไฟล์ */
+/* ระยะสุ่มรอบจุดที่สนใจ หน่วยกิโลเมตร
+   กริดของแบบจำลองละเอียด 1/12 องศา (~9.3 กม.) และมันสแนปพิกัดที่ขอเข้าช่องกริด
+   ถ้าสุ่มใกล้กว่าหนึ่งช่อง จุดสองจุดจะตกช่องเดียวกันแล้วได้ความชันเป็นศูนย์ปลอม ๆ
+   12 กม. ทำให้เหนือกับใต้ห่างกัน 24 กม. คือราว 2.6 ช่อง ซึ่งแยกออกจากกันแน่นอน */
+const FIS_FRONT_SAMPLE_KM = 12.0;
+
+/* ความชันที่ถือว่าเป็นแนวน้ำเต็มระดับ หน่วยองศาต่อกิโลเมตร
+   0.06 มาจากงานวิจัยในทะเลอาหรับที่พบว่าความชันระดับนี้ให้โอกาสจับได้สูงราว 80%
+   และอยู่ในช่วง 0.05-0.5 ที่วรรณกรรมใช้นิยาม "แนวน้ำ"
+
+   ⚠️ วัดน่านน้ำภาคใต้ 30 หมายในเดือน ส.ค. 2569 ได้ 0.005-0.029 องศา/กม.
+   คือ "ไม่มีหมายไหนถึงเกณฑ์แนวน้ำเลย" ซึ่งเป็นความจริงที่ต้องบอกผู้ใช้
+   ห้ามปรับสเกลให้อิงค่าที่วัดได้เองเพื่อให้ตัวเลขดูดี เพราะนั่นคือการเปลี่ยน
+   "ไม่มีแนวน้ำ" ให้กลายเป็น "แนวน้ำเต็มสิบ" โดยที่ทะเลไม่ได้เปลี่ยนอะไรเลย */
+const FIS_FRONT_FULL_GRADIENT = 0.06;
+
+/* ระยะห่างจริงขั้นต่ำระหว่างสองจุดตรงข้ามที่ยอมให้คิดความชัน
+   ถ้าน้อยกว่านี้แปลว่าทั้งคู่ตกช่องกริดเดียวกันหรือใกล้กันเกินไป
+   หารด้วยระยะสั้น ๆ จะขยายทั้งความชันจริงและความคลาดเคลื่อนจากการปัดทศนิยม */
+const FIS_FRONT_MIN_BASELINE_KM = 5.0;
+
 const FIS_WEATHER_PANEL_DAYS = 2;
 const FIS_WEATHER_MAX_DAYS = FIS_TIDES_MAX_AHEAD_DAYS + 1;
 
@@ -175,11 +196,47 @@ function fis_weather_forecast_url(float $lat, float $lon, int $days): string
     ], '', '&', PHP_QUERY_RFC3986);
 }
 
+/**
+ * พิกัดที่ขอจาก Marine API — จุดที่สนใจ แล้วตามด้วยสี่ทิศรอบ ๆ
+ *
+ * สี่จุดรอบใช้หาความชันของอุณหภูมิ (แนวน้ำ) ซึ่งเป็นสิ่งที่งานวิจัยบอกว่าดึงปลา
+ * ไม่ใช่ตัวอุณหภูมิเอง — อุณหภูมิที่จุดเดียวบอกได้แค่ว่าน้ำอุ่นหรือเย็น
+ * ส่วนแนวน้ำคือ "อุณหภูมิต่างกันกี่องศาต่อกิโลเมตร" ต้องมีหลายจุดถึงจะรู้
+ *
+ * Marine API รับหลายพิกัดในคำขอเดียวได้ การเพิ่มสี่จุดจึงไม่ได้เพิ่มจำนวนคำขอเลย
+ * ตอบกลับมาเป็นอาร์เรย์เรียงตามลำดับที่ขอ จุดที่ตกบนบกจะได้ค่า null ทั้งชุด
+ * โดยที่คำขอทั้งก้อนไม่ล้ม (ทดสอบแล้ว)
+ *
+ * @return list<array{float, float}> [กลาง, เหนือ, ตะวันออก, ใต้, ตะวันตก]
+ */
+function fis_front_sample_points(float $lat, float $lon): array
+{
+    $points = [[$lat, $lon]];
+    foreach ([0.0, 90.0, 180.0, 270.0] as $bearing) {
+        $points[] = fis_front_offset($lat, $lon, FIS_FRONT_SAMPLE_KM, $bearing);
+    }
+    return $points;
+}
+
+/** เลื่อนพิกัดไปตามทิศและระยะทาง โดยประมาณโลกเป็นทรงกลม พอสำหรับระยะสิบกว่ากิโล */
+function fis_front_offset(float $lat, float $lon, float $km, float $bearingDeg): array
+{
+    $earthRadiusKm = 6371.0;
+    $bearing = deg2rad($bearingDeg);
+
+    $dLat = ($km * cos($bearing)) / $earthRadiusKm * 180.0 / M_PI;
+    $dLon = ($km * sin($bearing)) / ($earthRadiusKm * cos(deg2rad($lat))) * 180.0 / M_PI;
+
+    return [$lat + $dLat, $lon + $dLon];
+}
+
 function fis_weather_marine_url(float $lat, float $lon, int $days): string
 {
+    $points = fis_front_sample_points($lat, $lon);
+
     return 'https://marine-api.open-meteo.com/v1/marine?' . http_build_query([
-        'latitude' => sprintf('%.2f', $lat),
-        'longitude' => sprintf('%.2f', $lon),
+        'latitude' => implode(',', array_map(static fn (array $p): string => sprintf('%.4f', $p[0]), $points)),
+        'longitude' => implode(',', array_map(static fn (array $p): string => sprintf('%.4f', $p[1]), $points)),
         'current' => 'wave_height,sea_surface_temperature',
         'hourly' => 'wave_height,sea_surface_temperature',
         'timezone' => FIS_WEATHER_TZ,
@@ -269,12 +326,12 @@ function fis_weather_build(array $forecast, ?array $marine): array
     // โอกาสฝนไม่มีในบล็อก current ของ Open-Meteo จึงต้องหยิบจากแถวรายชั่วโมงของชั่วโมงปัจจุบัน
     $precip = fis_weather_int($forecast['hourly']['precipitation_probability'][$startIndex] ?? null);
 
-    $currentWave = fis_weather_float($marine['current']['wave_height'] ?? null);
+    $currentWave = fis_weather_float($marine[0]['current']['wave_height'] ?? null);
     if ($currentWave === null) {
         $currentWave = $waves[$currentHourKey] ?? null;
     }
 
-    $currentSea = fis_weather_float($marine['current']['sea_surface_temperature'] ?? null);
+    $currentSea = fis_weather_float($marine[0]['current']['sea_surface_temperature'] ?? null);
     if ($currentSea === null) {
         $currentSea = $seaTemps[$currentHourKey] ?? null;
     }
@@ -295,8 +352,15 @@ function fis_weather_build(array $forecast, ?array $marine): array
             'hourly' => $hourly,
             // สรุปรายวันของอุณหภูมิน้ำ ครอบคลุมเท่าที่ขอพยากรณ์มา
             'sea_temperature_daily' => fis_weather_sea_daily($seaTemps),
+            // แนวน้ำ ณ ชั่วโมงปัจจุบัน — null ได้ถ้าจุดรอบ ๆ ตกบนบกทั้งสองแกน
+            'sea_front' => fis_weather_front($marine, $currentHourKey),
         ],
         'by_hour' => $byHour,
+        /* เก็บผลดิบของ Marine API ไว้ เพราะการคิดแนวน้ำของ "ชั่วโมงอื่น"
+           ต้องย้อนไปอ่านอุณหภูมิของทั้งสี่จุดรอบ ๆ ที่ชั่วโมงนั้น
+           ไม่ยัดลง data เพราะสัญญาของ /api/weather.php ไม่ได้ระบุไว้
+           และก้อนนี้ใหญ่เกินกว่าจะส่งให้เบราว์เซอร์โดยไม่มีใครใช้ */
+        'marine_raw' => $marine,
         // เก็บ sunrise/sunset แยกไว้ให้ score.php ใช้ ไม่ยัดลง data เพราะสัญญาของ weather ไม่ได้ระบุไว้
         'sun' => [
             'sunrise' => is_array($forecast['daily']['sunrise'] ?? null) ? $forecast['daily']['sunrise'] : [],
@@ -367,8 +431,9 @@ function fis_weather_wave_map(?array $marine): array
         return [];
     }
 
-    $times = $marine['hourly']['time'] ?? null;
-    $heights = $marine['hourly']['wave_height'] ?? null;
+    $centre = $marine[0] ?? null;
+    $times = $centre['hourly']['time'] ?? null;
+    $heights = $centre['hourly']['wave_height'] ?? null;
     if (!is_array($times) || !is_array($heights)) {
         return [];
     }
@@ -395,8 +460,9 @@ function fis_weather_sea_map(?array $marine): array
         return [];
     }
 
-    $times = $marine['hourly']['time'] ?? null;
-    $temps = $marine['hourly']['sea_surface_temperature'] ?? null;
+    $centre = $marine[0] ?? null;
+    $times = $centre['hourly']['time'] ?? null;
+    $temps = $centre['hourly']['sea_surface_temperature'] ?? null;
     if (!is_array($times) || !is_array($temps)) {
         return [];
     }
@@ -443,6 +509,157 @@ function fis_weather_sea_daily(array $seaMap): array
         ];
     }
     return $daily;
+}
+
+/**
+ * ความชันของอุณหภูมิผิวน้ำรอบจุดที่สนใจ — "แนวน้ำ"
+ *
+ * ใช้ผลต่างกลาง (central difference) จากสี่ทิศ:
+ *   dT/dx = (ตะวันออก - ตะวันตก) / ระยะระหว่างสองจุดนั้น
+ *   dT/dy = (เหนือ - ใต้) / ระยะระหว่างสองจุดนั้น
+ * ขนาดความชัน = รากที่สองของผลบวกกำลังสอง และทิศคือด้านที่น้ำอุ่นกว่า
+ *
+ * ⚠️ ต้องคิดระยะจากพิกัดที่ API ตอบกลับมา ไม่ใช่พิกัดที่เราขอ
+ * เพราะแบบจำลองสแนปพิกัดเข้าช่องกริด 1/12 องศา จุดที่ขอห่างกัน 24 กม.
+ * อาจกลายเป็นห่างจริง 18 หรือ 28 กม. ถ้าหารด้วยระยะที่ขอ ตัวเลขจะเพี้ยนได้ถึง 20%
+ *
+ * แกนไหนใช้ไม่ได้ (จุดตกบนบก หรือสองจุดตกช่องเดียวกัน) จะข้ามแกนนั้น
+ * แล้วคิดจากแกนที่เหลือ ถ้าใช้ไม่ได้ทั้งคู่จะคืน null ไม่ใช่เดาค่าให้
+ *
+ * @param list<array<string, mixed>>|null $marine ผลจาก Marine API แบบหลายพิกัด
+ * @return array<string, mixed>|null
+ */
+function fis_weather_front(?array $marine, string $hourKey): ?array
+{
+    if ($marine === null || count($marine) < 5) {
+        return null;
+    }
+
+    // ลำดับตรงกับ fis_front_sample_points: กลาง เหนือ ตะวันออก ใต้ ตะวันตก
+    [$centre, $north, $east, $south, $west] = $marine;
+
+    $axisNs = fis_front_axis($north, $south, $centre, $hourKey);
+    $axisEw = fis_front_axis($east, $west, $centre, $hourKey);
+
+    if ($axisNs === null && $axisEw === null) {
+        return null;
+    }
+
+    $dTdy = $axisNs['slope'] ?? 0.0;
+    $dTdx = $axisEw['slope'] ?? 0.0;
+
+    $gradient = sqrt($dTdx * $dTdx + $dTdy * $dTdy);
+
+    // ทิศที่น้ำอุ่นขึ้น นับตามเข็มจากทิศเหนือ ซึ่งเป็นวิธีอ่านทิศบนเรือ
+    $bearing = $gradient > 0.0
+        ? (int) round(fmod(rad2deg(atan2($dTdx, $dTdy)) + 360.0, 360.0))
+        : null;
+
+    // ระยะที่ใช้จริงต่างจากระยะที่ขอ เพราะแบบจำลองสแนปพิกัดเข้าช่องกริด
+    // ส่งออกไปด้วยเพื่อให้ตรวจย้อนได้ว่าตัวเลขนี้มาจากช่วงกี่กิโลเมตร
+    $baselines = array_values(array_filter([
+        $axisNs['km'] ?? null,
+        $axisEw['km'] ?? null,
+    ], static fn ($v): bool => $v !== null));
+
+    return [
+        'gradient_c_per_km' => round($gradient, 4),
+        'warmer_toward_deg' => $bearing,
+        'warmer_toward_label' => fis_weather_direction_label($bearing),
+        'axes_used' => ($axisNs !== null ? 1 : 0) + ($axisEw !== null ? 1 : 0),
+        'requested_km' => FIS_FRONT_SAMPLE_KM,
+        'baseline_km' => $baselines === [] ? null : round(array_sum($baselines) / count($baselines), 1),
+    ];
+}
+
+/**
+ * ความชันตามแกนหนึ่ง
+ *
+ * ปกติใช้ผลต่างกลางจากจุดตรงข้ามสองจุด แต่หมายที่อยู่ชิดฝั่งจะมีจุดหนึ่งตกบนบก
+ * ซึ่งเป็นเรื่องปกติมาก ไม่ใช่กรณียกเว้น ถ้าทิ้งทั้งแกนไปเลยจะเหลือข้อมูลแกนเดียว
+ * จึงถอยไปใช้ผลต่างระหว่างจุดกลางกับด้านที่ยังมีข้อมูล ซึ่งยังเป็นความชันจริง
+ * เพียงแต่วัดจากช่วงที่สั้นกว่า
+ *
+ * คืน null เมื่อไม่มีข้อมูลทั้งสองด้าน หรือสองจุดใกล้กันเกินกว่าจะหารได้อย่างมีความหมาย
+ *
+ * @return array{slope: float, km: float}|null
+ */
+function fis_front_axis(?array $plus, ?array $minus, ?array $centre, string $hourKey): ?array
+{
+    $a = fis_front_temp_at($plus, $hourKey);
+    $b = fis_front_temp_at($minus, $hourKey);
+
+    if ($a !== null && $b !== null) {
+        return fis_front_slope($plus, $minus, $a, $b);
+    }
+
+    $middle = fis_front_temp_at($centre, $hourKey);
+    if ($middle === null) {
+        return null;
+    }
+
+    if ($a !== null) {
+        return fis_front_slope($plus, $centre, $a, $middle);
+    }
+    if ($b !== null) {
+        return fis_front_slope($centre, $minus, $middle, $b);
+    }
+
+    return null;
+}
+
+/**
+ * ความชันระหว่างสองจุด โดยคิดระยะจากพิกัดที่ API ตอบกลับมาจริง
+ *
+ * @return array{slope: float, km: float}|null
+ */
+function fis_front_slope(?array $from, ?array $to, float $tempFrom, float $tempTo): ?array
+{
+    $latA = isset($from['latitude']) ? (float) $from['latitude'] : null;
+    $lonA = isset($from['longitude']) ? (float) $from['longitude'] : null;
+    $latB = isset($to['latitude']) ? (float) $to['latitude'] : null;
+    $lonB = isset($to['longitude']) ? (float) $to['longitude'] : null;
+    if ($latA === null || $lonA === null || $latB === null || $lonB === null) {
+        return null;
+    }
+
+    $km = fis_front_distance_km($latA, $lonA, $latB, $lonB);
+    if ($km < FIS_FRONT_MIN_BASELINE_KM) {
+        return null;
+    }
+
+    return ['slope' => ($tempFrom - $tempTo) / $km, 'km' => $km];
+}
+
+/** อุณหภูมิของจุดหนึ่งที่ชั่วโมงที่ระบุ ถ้าไม่มีแถวนั้นจะถอยไปใช้ค่าปัจจุบัน */
+function fis_front_temp_at(?array $point, string $hourKey): ?float
+{
+    if ($point === null) {
+        return null;
+    }
+
+    $times = $point['hourly']['time'] ?? null;
+    $temps = $point['hourly']['sea_surface_temperature'] ?? null;
+    if (is_array($times) && is_array($temps)) {
+        foreach ($times as $i => $t) {
+            if (is_string($t) && strncmp($t, $hourKey, 13) === 0) {
+                return fis_weather_float($temps[$i] ?? null);
+            }
+        }
+    }
+
+    return fis_weather_float($point['current']['sea_surface_temperature'] ?? null);
+}
+
+/** ระยะทางระหว่างสองพิกัดด้วยสูตร haversine หน่วยกิโลเมตร */
+function fis_front_distance_km(float $lat1, float $lon1, float $lat2, float $lon2): float
+{
+    $earthRadiusKm = 6371.0;
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat / 2) ** 2
+        + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
+    return 2 * $earthRadiusKm * asin(min(1.0, sqrt($a)));
 }
 
 /** ทิศลมภาษาไทย 8 ทิศ แบ่งช่องละ 45 องศา โดยให้ 0 องศาอยู่กึ่งกลางช่อง "เหนือ" */

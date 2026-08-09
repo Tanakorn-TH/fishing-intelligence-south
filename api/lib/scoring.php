@@ -19,7 +19,7 @@ require_once __DIR__ . '/conditions.php';
 const FIS_SCORE_TZ = 'Asia/Bangkok';
 
 /** เปลี่ยนเลขนี้ทุกครั้งที่น้ำหนักหรือสูตรเปลี่ยน และต้องแก้ docs/fishing-score.md ด้วย */
-const FIS_SCORE_FORMULA_VERSION = '1.1';
+const FIS_SCORE_FORMULA_VERSION = '1.2';
 
 const FIS_SCORE_NOTICE = 'คะแนนนี้เป็นเครื่องมือช่วยวางแผน ไม่ใช่คำพยากรณ์ว่าจะได้ปลา '
     . 'น้ำหนักของแต่ละปัจจัยทีมเราเลือกเอง ยังไม่ได้ปรับจากสถิติการจับปลาจริง '
@@ -50,8 +50,9 @@ function fis_score_styles(): array
                 'moon_darkness' => 0.30,
                 'wind_calm' => 0.25,
                 'water_movement' => 0.15,
-                'wave_calm' => 0.15,
+                'wave_calm' => 0.10,
                 'light_phase' => 0.10,
+                'sea_front' => 0.05,
                 'dry' => 0.05,
             ],
         ],
@@ -60,10 +61,11 @@ function fis_score_styles(): array
             'tagline' => 'เก๋า กะพง ปลากินหน้าดิน',
             'weights' => [
                 'water_movement' => 0.30,
-                'wave_calm' => 0.25,
+                'wave_calm' => 0.20,
                 'wind_calm' => 0.20,
                 'tidal_range' => 0.10,
                 'solunar' => 0.10,
+                'sea_front' => 0.05,
                 'dry' => 0.05,
             ],
         ],
@@ -72,10 +74,11 @@ function fis_score_styles(): array
             'tagline' => 'โยกจิ๊กน้ำลึก',
             'weights' => [
                 'water_movement' => 0.30,
-                'light_phase' => 0.20,
                 'wave_calm' => 0.20,
+                'light_phase' => 0.15,
                 'wind_calm' => 0.15,
                 'tidal_range' => 0.10,
+                'sea_front' => 0.05,
                 'solunar' => 0.05,
             ],
         ],
@@ -84,9 +87,10 @@ function fis_score_styles(): array
             'tagline' => 'GT ผิวน้ำ',
             'weights' => [
                 'water_movement' => 0.30,
-                'tidal_range' => 0.20,
-                'light_phase' => 0.20,
+                'tidal_range' => 0.15,
+                'light_phase' => 0.15,
                 'wind_calm' => 0.15,
+                'sea_front' => 0.10,
                 'wave_calm' => 0.10,
                 'solunar' => 0.05,
             ],
@@ -95,11 +99,12 @@ function fis_score_styles(): array
             'name_th' => 'ทรอลลิ่ง',
             'tagline' => 'ลากเหยื่อหาปลาผิวน้ำ',
             'weights' => [
-                'wave_calm' => 0.30,
+                'wave_calm' => 0.25,
                 'wind_calm' => 0.25,
                 'water_movement' => 0.15,
                 'light_phase' => 0.15,
-                'dry' => 0.10,
+                'sea_front' => 0.10,
+                'dry' => 0.05,
                 'solunar' => 0.05,
             ],
         ],
@@ -148,6 +153,7 @@ function fis_score_factor_labels(): array
     return [
         'water_movement' => 'แรงการไหลของน้ำ',
         'water_moderate' => 'น้ำเดินกำลังดี',
+        'sea_front' => 'แนวน้ำ',
         'tidal_range' => 'น้ำเกิด-น้ำตาย',
         'moon_darkness' => 'ความมืดของคืน',
         'solunar' => 'ช่วง Solunar',
@@ -173,6 +179,7 @@ function fis_score_factors(array $weather, array $tides, array $solunar, DateTim
     return [
         'water_movement' => fis_score_water_movement($series, $at),
         'water_moderate' => fis_score_water_moderate($series, $at),
+        'sea_front' => fis_score_sea_front($weather, $at),
         'tidal_range' => fis_score_tidal_range($series),
         'moon_darkness' => fis_score_moon_darkness($solunar),
         'solunar' => fis_score_solunar($solunar, $at),
@@ -239,6 +246,52 @@ function fis_score_water_movement(array $series, DateTimeImmutable $at): array
         'value' => $value,
         'note' => sprintf('%s %.2f ม./ชม. (แรงสุดของวันนี้ %.2f)', $word, $rate, $peak),
     ];
+}
+
+/**
+ * แนวน้ำ — ความชันของอุณหภูมิผิวน้ำรอบจุดที่ตก
+ *
+ * งานวิจัยที่ว่าอุณหภูมิน้ำทำนายได้ดีกว่า solunar หมายถึง **แนวน้ำ** ไม่ใช่ตัวอุณหภูมิ
+ * ปลาไม่ได้รวมตัวเพราะน้ำ 30 องศา แต่รวมตัวตรงที่น้ำสองมวลมาเจอกัน
+ * เพราะตรงนั้นแพลงก์ตอนสะสม ปลาเหยื่อตาม แล้วปลาล่าตามมาอีกที
+ *
+ * สเกล: 0.06 องศา/กม. = เต็ม 1.0 ตัวเลขนี้มาจากงานวิจัยในทะเลอาหรับ
+ * ที่พบว่าความชันระดับนี้ให้โอกาสจับได้สูงราว 80% และอยู่ในช่วง 0.05-0.5
+ * ที่วรรณกรรมใช้นิยามคำว่าแนวน้ำ
+ *
+ * ⚠️ พื้นเป็น 0.5 ไม่ใช่ 0 โดยตั้งใจ
+ * "ไม่มีแนวน้ำ" ไม่ได้แปลว่า "ตกไม่ได้" มันแปลว่าวันนี้ไม่มีโบนัสข้อนี้เท่านั้น
+ * ถ้าให้พื้นเป็นศูนย์ คะแนนทุกงานทุกวันจะถูกลากลงพร้อมกันทั้งกระดาน
+ * ซึ่งไม่ได้บอกอะไรใครเลยนอกจากทำให้เลขดูแย่ลงเฉย ๆ
+ *
+ * ⚠️ วัดหมายจริง 48 จุดในเดือน ส.ค. 2569 ได้ความชัน 0.004-0.060 องศา/กม.
+ * มัธยฐาน 0.012 และมีแค่จุดเดียวที่แตะ 0.06 แปลว่าน่านน้ำภาคใต้ช่วงมรสุม
+ * แทบไม่มีแนวน้ำตามนิยามนี้ ปัจจัยนี้จึงมักให้ค่าราว 0.6 ซึ่งถูกต้องแล้ว
+ * ห้ามปรับสเกลให้อิงค่าที่วัดได้เองเพื่อให้ตัวเลขกระจายสวยขึ้น
+ * เพราะนั่นจะเปลี่ยน "ไม่มีแนวน้ำ" ให้กลายเป็น "แนวน้ำเต็มสิบ" ทั้งที่ทะเลเหมือนเดิม
+ */
+function fis_score_sea_front(array $weather, DateTimeImmutable $at): array
+{
+    $front = fis_weather_front($weather['marine_raw'] ?? null, $at->format('Y-m-d\TH'));
+
+    if ($front === null || !is_numeric($front['gradient_c_per_km'] ?? null)) {
+        return ['value' => 0.5, 'note' => 'จุดนี้วัดแนวน้ำไม่ได้ ใช้ค่ากลางแทน'];
+    }
+
+    $gradient = (float) $front['gradient_c_per_km'];
+    $share = $gradient / FIS_FRONT_FULL_GRADIENT;
+    $value = fis_score_clamp(0.5 + 0.5 * $share);
+
+    $strength = $share >= 1.0 ? 'แนวน้ำชัด'
+        : ($share >= 0.5 ? 'มีแนวน้ำอ่อน ๆ' : 'แทบไม่มีแนวน้ำ');
+
+    $toward = $front['warmer_toward_label'] ?? null;
+    $note = sprintf('%s %.3f องศา/กม.', $strength, $gradient);
+    if ($toward !== null && $share >= 0.5) {
+        $note .= ' น้ำอุ่นกว่าอยู่ทาง' . $toward;
+    }
+
+    return ['value' => $value, 'note' => $note];
 }
 
 /**
