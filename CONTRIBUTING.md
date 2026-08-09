@@ -110,6 +110,21 @@ php -S 127.0.0.1:8080 -t .
 DB_HOST=127.0.0.1 DB_NAME=fishing DB_USER=root DB_PASSWORD=root API_BASE=http://127.0.0.1:8080 php tests/api-test.php
 ```
 
+job นี้ยังวัด**พื้นที่กด**ด้วย เพราะต้องใช้เซิร์ฟเวอร์ที่ API ทำงานจริง
+ถ้าวัดบน static server ส่วนที่รอข้อมูลจะไม่ถูกวาด แล้วจะสรุปว่า "ผ่านแล้ว" ทั้งที่ยังไม่เห็นของจริง
+— เคยพลาดแบบนี้มาสองรอบ
+
+```bash
+npm install --no-save playwright@1 && npx playwright install chromium
+```
+
+```bash
+TAP_BASE=http://127.0.0.1:8080 node scripts/check-tap-targets.mjs
+```
+
+วัดที่ 390 / 820 / 1280 โดยเปิดโหมดสัมผัสทุกช่วง เพราะเกณฑ์ผูกกับ `pointer: coarse`
+ไม่ใช่ความกว้างจอ — แท็บเล็ตและจอสัมผัสขนาดใหญ่ก็ใช้นิ้วเหมือนกัน
+
 ## เลขเวอร์ชัน
 
 ใช้ [Semantic Versioning](https://semver.org/) ผูกกับ git tag เวอร์ชันปัจจุบันแสดงที่ท้ายหน้าเว็บ
