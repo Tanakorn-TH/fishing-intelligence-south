@@ -84,6 +84,29 @@ fis_handle(function (): void {
                 $problems[] = "ออกไปหา {$name} ไม่ได้";
             }
         }
+        /* ทดสอบเส้นทางคลอโรฟิลล์ทั้งเส้น ไม่ใช่แค่ "ต่อติดไหม"
+           เพราะครั้งที่แล้วปลายทางต่อติดแต่ค่ายังออกมา null ซึ่งแปลว่าปัญหา
+           อยู่ที่การแยก CSV ไม่ใช่การเชื่อมต่อ แยกสองอย่างนี้ให้เห็นตั้งแต่แรก */
+        try {
+            $csv = fis_remote_get_text(fis_chlorophyll_url(6.95, 101.48), 8);
+            $lines = preg_split('/?
+/', trim($csv));
+            $parsed = fis_chlorophyll_parse($csv);
+            $upstream['chlorophyll-pipeline'] = [
+                'bytes' => strlen($csv),
+                'lines' => is_array($lines) ? count($lines) : 0,
+                'first_line' => is_array($lines) ? substr((string) $lines[0], 0, 60) : null,
+                'parsed' => $parsed === null ? null : $parsed['value_mg_m3'],
+                'cells_used' => $parsed['cells_used'] ?? 0,
+            ];
+            if ($parsed === null) {
+                $problems[] = 'ดึง CSV คลอโรฟิลล์ได้แต่แยกค่าไม่ออก';
+            }
+        } catch (Throwable $e) {
+            $upstream['chlorophyll-pipeline'] = ['error' => $e->getMessage()];
+            $problems[] = 'เส้นทางคลอโรฟิลล์ล้ม';
+        }
+
         $checks['upstream'] = $upstream;
     }
 

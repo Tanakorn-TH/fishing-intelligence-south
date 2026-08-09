@@ -22,6 +22,14 @@ require_once __DIR__ . '/astro.php';
 
 const FIS_WEATHER_TZ = 'Asia/Bangkok';
 const FIS_WEATHER_CACHE_TTL = 900;
+
+/* เลขรุ่นของกุญแจแคช — เพิ่มทีละหนึ่งทุกครั้งที่รูปร่างของสิ่งที่เก็บเปลี่ยน
+   ทำไมต้องมี: ตอนเพิ่มคลอโรฟิลล์ลง payload สิ่งที่เก็บไว้ก่อนหน้าไม่มีคีย์นั้น
+   แต่ยังอยู่ในแคชและถูกเสิร์ฟต่อไปจนหมดอายุ ทำให้ดูเหมือนฟีเจอร์ไม่ทำงานทั้งที่ทำงานดี
+   หนักกว่านั้นคือคลอโรฟิลล์ที่เก็บค่า null ไว้ก่อนจะมีธงบอกว่า "ล้มเหลว"
+   ถูกอ่านเป็นคำตอบจริงว่าไม่มีข้อมูล แล้วค้างอยู่สิบสองชั่วโมง
+   การขยับเลขรุ่นทำให้ของเก่าถูกมองข้ามทันที แทนที่จะต้องนั่งรอให้หมดอายุ */
+const FIS_CACHE_VERSION = 2;
 const FIS_WEATHER_HOURS = 24;
 
 /* ── คลอโรฟิลล์-เอ จากดาวเทียม ──────────────────────────────────────────
@@ -53,6 +61,14 @@ const FIS_CHL_CACHE_TTL = 43200;
    ถ้าจำความล้มเหลวไว้ 12 ชั่วโมงเท่ากัน เน็ตสะดุดครั้งเดียวจะทำให้ค่าหายไปทั้งวัน
    สั้นกว่านี้ก็ไม่ดี เพราะถ้าปลายทางล่มยาวจะกลายเป็นยิงซ้ำทุกคำขอแล้วหน้าเว็บช้า */
 const FIS_CHL_FAIL_TTL = 900;
+
+/* ถ้าดึงไม่สำเร็จ ยอมเสิร์ฟค่าเดิมที่เคยได้ นานได้ถึงเจ็ดวัน
+   ERDDAP เป็นเซิร์ฟเวอร์สาธารณะที่ตอบ 503 เป็นระยะ วัดจากโปรดักชันแล้ว
+   ล้มราวครึ่งหนึ่งของคำขอในช่วงที่มันหนัก การ retry ทันทีจะทำให้หน้าเว็บช้าขึ้นสองเท่า
+   แต่ค่านี้เป็นค่าเฉลี่ยรายเดือน ของเมื่อวานกับของวันนี้คือตัวเลขเดียวกัน
+   เสิร์ฟของเดิมไปก่อนจึงดีกว่าทั้งการรอและการบอกว่าไม่มีข้อมูล
+   ติดธง is_stale ไปด้วยเสมอ เพื่อไม่ให้ใครเข้าใจว่าเพิ่งดึงมาสด ๆ */
+const FIS_CHL_STALE_TTL = 604800;
 
 const FIS_TIDES_TZ = 'Asia/Bangkok';
 const FIS_TIDES_CACHE_TTL = 1800;
@@ -184,7 +200,7 @@ function fis_weather_payload(float $lat, float $lon, int $days = FIS_WEATHER_PAN
 
     // จำนวนวันอยู่ในกุญแจแคชด้วย ไม่งั้นคำขอของหน้าเว็บที่ขอ 2 วัน
     // จะไปคืนให้ตัวคิดคะแนนที่ต้องการ 8 วัน แล้วชั่วโมงที่ต้องใช้จะหายไปเงียบ ๆ
-    $cacheKey = sprintf('weather:%.2f:%.2f:%dd', $lat, $lon, $days);
+    $cacheKey = sprintf('weather:v%d:%.2f:%.2f:%dd', FIS_CACHE_VERSION, $lat, $lon, $days);
     $payload = fis_cache_get($cacheKey, FIS_WEATHER_CACHE_TTL);
     if ($payload !== null) {
         $payload['cached'] = true;
@@ -244,7 +260,7 @@ function fis_chlorophyll_payload(float $lat, float $lon): ?array
     $lat = round($lat, 2);
     $lon = round($lon, 2);
 
-    $cacheKey = sprintf('chl:%.2f:%.2f', $lat, $lon);
+    $cacheKey = sprintf('chl:v%d:%.2f:%.2f', FIS_CACHE_VERSION, $lat, $lon);
 
     // คำตอบที่ได้จริง (รวมถึง "เมฆบังทั้งเดือน") เก็บยาว เพราะข้อมูลออกเดือนละครั้ง
     $cached = fis_cache_get($cacheKey, FIS_CHL_CACHE_TTL);
@@ -255,7 +271,7 @@ function fis_chlorophyll_payload(float $lat, float $lon): ?array
     // ส่วนความล้มเหลว ยอมจำไว้แค่ช่วงสั้น ๆ แล้วลองใหม่
     $recent = fis_cache_get($cacheKey, FIS_CHL_FAIL_TTL);
     if ($recent !== null && ($recent['failed'] ?? false) === true) {
-        return null;
+        return fis_chlorophyll_stale($cacheKey);
     }
 
     try {
@@ -263,14 +279,33 @@ function fis_chlorophyll_payload(float $lat, float $lon): ?array
     } catch (FisRemoteException $e) {
         // ของเสริม ล้มได้โดยไม่ทำให้สภาพอากาศทั้งก้อนล้มตาม
         error_log('[fishing-api/chlorophyll] ดึงไม่ได้: ' . $e->getMessage());
-        fis_cache_put($cacheKey, ['value' => null, 'failed' => true]);
-        return null;
+        $stale = fis_chlorophyll_stale($cacheKey);
+        fis_cache_put($cacheKey, ['value' => $stale, 'failed' => true]);
+        return $stale;
     }
 
     $parsed = fis_chlorophyll_parse($csv);
     fis_cache_put($cacheKey, ['value' => $parsed, 'failed' => false]);
 
     return $parsed;
+}
+
+/**
+ * ค่าคลอโรฟิลล์เดิมที่เคยดึงได้ ใช้ตอนปลายทางล้ม
+ * คืน null ถ้าไม่เคยมีค่าเลย — ห้ามแต่งตัวเลขขึ้นมาแทน
+ *
+ * @return array<string, mixed>|null
+ */
+function fis_chlorophyll_stale(string $cacheKey): ?array
+{
+    $old = fis_cache_get($cacheKey, FIS_CHL_STALE_TTL);
+    $value = $old['value'] ?? null;
+    if (!is_array($value)) {
+        return null;
+    }
+
+    $value['is_stale'] = true;
+    return $value;
 }
 
 function fis_chlorophyll_url(float $lat, float $lon): string
@@ -339,6 +374,7 @@ function fis_chlorophyll_parse(string $csv): ?array
         'cells_used' => $count,
         'observed_month' => $observed === null ? null : substr($observed, 0, 7),
         'source' => 'MODIS Aqua ผ่าน NOAA ERDDAP (' . FIS_CHL_DATASET . ')',
+        'is_stale' => false,
     ];
 }
 
