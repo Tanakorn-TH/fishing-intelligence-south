@@ -53,7 +53,7 @@ python -m http.server 5173
 
 ## CI ตรวจอะไรบ้าง
 
-ทุก PR จะรัน [.github/workflows/ci.yml](.github/workflows/ci.yml) 3 job
+ทุก PR จะรัน [.github/workflows/ci.yml](.github/workflows/ci.yml) 4 job
 
 > ⚠️ **ห้ามเปลี่ยนค่า `name:` ของ job ใน `ci.yml` โดยไม่แก้ ruleset ตาม**
 > branch protection บังคับ check ตาม**ชื่อ** ถ้าเปลี่ยนชื่อ job แล้วไม่แก้ ruleset
@@ -68,6 +68,7 @@ python -m http.server 5173
 | ไวยากรณ์ JavaScript | `node --check app.js` |
 | id ที่ `app.js` เรียกหา มีจริงใน `index.html` | `node scripts/check-dom-ids.mjs` |
 | HTML ถูกตามสเปกและ accessibility | `npx html-validate index.html` |
+| media query ปลอดภัยกับ Safari เก่า | `node scripts/check-media-queries.mjs` |
 
 ตัวตรวจ id มีไว้เพราะบั๊กแบบนี้เคยเกิดจริง — `getElementById` คืน `null` แล้วสคริปต์ตายเงียบตอนโหลดหน้า
 หน้าเว็บดูเหมือนปกติแต่กดอะไรไม่ได้เลย และจะไม่เห็นอะไรถ้าไม่เปิด devtools
@@ -132,6 +133,12 @@ git tag -a v0.3.2 -m "สรุปสั้น ๆ ว่ารุ่นนี�
 - **วันที่ต้องคำนวณจาก `Date` เสมอ** อย่าฮาร์ดโค้ดชื่อวันหรือชื่อเดือน — เคยพลาดมาแล้ว
 - **แยก `.today` กับ `.selected` ให้ชัด** "วันนี้" กับ "วันที่ผู้ใช้เลือก" เป็นคนละสถานะ
 - **ค่าที่เป็นข้อมูลตัวอย่าง ให้เขียนคอมเมนต์กำกับ** ว่ารอต่อ API อะไร
+- **ห้ามเขียน media query แบบ range syntax** เช่น `@media (width < 40rem)` — Safari ก่อน 16.4
+  ทิ้งทั้งบล็อกเงียบ ๆ ไม่มี error ให้เห็น เขียนซ้อนสองชั้นแทน มีตัวดักใน CI แล้ว
+- **ระยะกันติ่งจอใช้โทเคน `--sa-t/-r/-b/-l`** ไม่เรียก `env()` ตรง ๆ เพราะต้องหารตัวคูณซูมก่อน
+  ของที่เป็น `position: fixed` ไม่ได้ padding จาก body ต้องกันเองหรือใส่คลาส `.safe-x`
+- **พื้นที่กดวัดที่ `pointer: coarse` ไม่ใช่ความกว้างจอ** แท็บเล็ตจอใหญ่ก็ใช้นิ้ว
+  ขยายด้วย `::after` ที่วางทับ ไม่ใช่เพิ่มขนาดกล่องจริง จะได้ไม่ทำแถวเสียสัดส่วน
 - **พิกัดใน MySQL เขียน `POINT(lat lon)` เสมอ** — SRID 4326 บน MySQL ใช้ละติจูดก่อน ตรงข้ามกับ PostGIS
   ถ้าคุณคุ้นกับ PostGIS หรือ GeoJSON (ซึ่งใช้ lon ก่อน) ต้องสลับก่อนเขียนลงฐานข้อมูล
 - **คิวรีระยะทางต้องกรองด้วย `MBRIntersects` ก่อนเสมอ** MySQL ใช้ SPATIAL INDEX ได้เฉพาะฟังก์ชันตระกูล MBR
