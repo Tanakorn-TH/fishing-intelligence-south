@@ -10,7 +10,7 @@
 /* เลขเวอร์ชัน — ที่นี่ที่เดียวเป็นแหล่งความจริง
    ปล่อยรุ่น = แก้เลขนี้ + สร้าง git tag ชื่อเดียวกัน (vX.Y.Z) แล้ว push tags
    ค่าใน index.html เป็นแค่ตัวสำรองตอน JS ยังไม่ทำงาน ต้องตรงกับค่านี้เสมอ */
-const APP_VERSION = '0.7.0';
+const APP_VERSION = '0.8.0';
 
 const TH_DAY_ABBR = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 const TH_MONTH_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -408,7 +408,54 @@ function renderWeather(payload) {
 
   renderHourly(hourly);
   renderSeaOutlook((payload.data && payload.data.sea_temperature_daily) || []);
+  renderSeaFront(payload.data && payload.data.sea_front);
   renderSource(document.getElementById('weatherSource'), payload.meta);
+}
+
+/**
+ * แนวน้ำ — ความชันของอุณหภูมิรอบจุดที่เลือก
+ *
+ * แสดงทั้งความแรงและทิศที่น้ำอุ่นกว่าอยู่ เพราะทิศคือสิ่งที่เอาไปใช้ได้จริง
+ * รู้ว่า "มีแนวน้ำ" อย่างเดียวแล้วไม่รู้ว่าอยู่ทางไหน ก็ทำอะไรต่อไม่ได้
+ *
+ * เกณฑ์ 0.06 องศา/กม. มาจากงานวิจัย ไม่ใช่จากค่าที่เราวัดได้เอง
+ * น่านน้ำเราวัดได้ราว 0.004-0.06 จึงมักขึ้นว่า "แทบไม่มีแนวน้ำ" ซึ่งเป็นความจริง
+ */
+const FRONT_FULL_GRADIENT = 0.06;
+
+function renderSeaFront(front) {
+  const box = document.getElementById('seaFront');
+
+  if (!front || !isFiniteNumber(front.gradient_c_per_km)) {
+    box.hidden = true;
+    return;
+  }
+
+  box.hidden = false;
+
+  const gradient = front.gradient_c_per_km;
+  const share = gradient / FRONT_FULL_GRADIENT;
+  const strength = share >= 1 ? 'แนวน้ำชัด'
+    : (share >= 0.5 ? 'มีแนวน้ำอ่อน ๆ' : 'แทบไม่มีแนวน้ำ');
+
+  document.getElementById('seaFrontStrength').textContent =
+    `${strength} · ${gradient.toFixed(3)} °C/กม.`;
+
+  const bits = [];
+  if (front.warmer_toward_label) bits.push(`น้ำอุ่นกว่าอยู่ทาง${front.warmer_toward_label}`);
+  if (isFiniteNumber(front.baseline_km)) bits.push(`วัดจากจุดห่างกัน ${roundTo(front.baseline_km, 1)} กม.`);
+  // บอกตรง ๆ เมื่อได้ข้อมูลแค่แกนเดียว เพราะความมั่นใจต่างกันจริง
+  if (front.axes_used === 1) bits.push('มีข้อมูลแกนเดียว (อีกด้านเป็นแผ่นดิน)');
+  document.getElementById('seaFrontDetail').textContent = bits.join(' · ');
+
+  // เข็มชี้ทิศที่น้ำอุ่นกว่า หมุนตามองศาจริง 0 องศาคือทิศเหนือ
+  const dial = document.getElementById('seaFrontDial');
+  if (isFiniteNumber(front.warmer_toward_deg)) {
+    dial.style.transform = `rotate(${front.warmer_toward_deg}deg)`;
+    dial.hidden = false;
+  } else {
+    dial.hidden = true;
+  }
 }
 
 /* อุณหภูมิน้ำต้องมีทศนิยมหนึ่งตำแหน่งเสมอ
