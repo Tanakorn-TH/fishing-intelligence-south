@@ -180,8 +180,8 @@ function fis_weather_marine_url(float $lat, float $lon, int $days): string
     return 'https://marine-api.open-meteo.com/v1/marine?' . http_build_query([
         'latitude' => sprintf('%.2f', $lat),
         'longitude' => sprintf('%.2f', $lon),
-        'current' => 'wave_height',
-        'hourly' => 'wave_height',
+        'current' => 'wave_height,sea_surface_temperature',
+        'hourly' => 'wave_height,sea_surface_temperature',
         'timezone' => FIS_WEATHER_TZ,
         'forecast_days' => $days,
     ], '', '&', PHP_QUERY_RFC3986);
@@ -224,6 +224,7 @@ function fis_weather_build(array $forecast, ?array $marine): array
     }
 
     $waves = fis_weather_wave_map($marine);
+    $seaTemps = fis_weather_sea_map($marine);
 
     $hourly = [];
     $count = count($times);
@@ -237,6 +238,7 @@ function fis_weather_build(array $forecast, ?array $marine): array
             'temperature_c' => fis_weather_float($forecast['hourly']['temperature_2m'][$i] ?? null),
             'wind_speed_kmh' => fis_weather_float($forecast['hourly']['wind_speed_10m'][$i] ?? null),
             'wave_height_m' => $waves[$times[$i]] ?? null,
+            'sea_temperature_c' => $seaTemps[$times[$i]] ?? null,
             'weather_code' => fis_weather_int($forecast['hourly']['weather_code'][$i] ?? null),
         ];
     }
@@ -255,6 +257,7 @@ function fis_weather_build(array $forecast, ?array $marine): array
             'wind_speed_kmh' => fis_weather_float($forecast['hourly']['wind_speed_10m'][$i] ?? null),
             'wind_direction_deg' => fis_weather_int($forecast['hourly']['wind_direction_10m'][$i] ?? null),
             'wave_height_m' => $waves[$times[$i]] ?? null,
+            'sea_temperature_c' => $seaTemps[$times[$i]] ?? null,
             'precipitation_probability_pct' => fis_weather_int($forecast['hourly']['precipitation_probability'][$i] ?? null),
             'temperature_c' => fis_weather_float($forecast['hourly']['temperature_2m'][$i] ?? null),
             'pressure_hpa' => fis_weather_float($forecast['hourly']['pressure_msl'][$i] ?? null),
@@ -271,6 +274,11 @@ function fis_weather_build(array $forecast, ?array $marine): array
         $currentWave = $waves[$currentHourKey] ?? null;
     }
 
+    $currentSea = fis_weather_float($marine['current']['sea_surface_temperature'] ?? null);
+    if ($currentSea === null) {
+        $currentSea = $seaTemps[$currentHourKey] ?? null;
+    }
+
     return [
         'data' => [
             'current' => [
@@ -280,10 +288,13 @@ function fis_weather_build(array $forecast, ?array $marine): array
                 'wind_direction_deg' => $windDeg,
                 'wind_direction_label' => fis_weather_direction_label($windDeg),
                 'wave_height_m' => $currentWave,
+                'sea_temperature_c' => $currentSea,
                 'precipitation_probability_pct' => $precip,
                 'pressure_hpa' => fis_weather_float($current['pressure_msl'] ?? null),
             ],
             'hourly' => $hourly,
+            // สรุปรายวันของอุณหภูมิน้ำ ครอบคลุมเท่าที่ขอพยากรณ์มา
+            'sea_temperature_daily' => fis_weather_sea_daily($seaTemps),
         ],
         'by_hour' => $byHour,
         // เก็บ sunrise/sunset แยกไว้ให้ score.php ใช้ ไม่ยัดลง data เพราะสัญญาของ weather ไม่ได้ระบุไว้
@@ -335,6 +346,7 @@ function fis_weather_conditions_at(array $payload, DateTimeImmutable $at): array
         'wind_direction_deg' => $row['wind_direction_deg'],
         'wind_direction_label' => fis_weather_direction_label($row['wind_direction_deg']),
         'wave_height_m' => $row['wave_height_m'],
+        'sea_temperature_c' => $row['sea_temperature_c'],
         'precipitation_probability_pct' => $row['precipitation_probability_pct'],
         'pressure_hpa' => $row['pressure_hpa'],
         'estimated' => false,
@@ -368,6 +380,69 @@ function fis_weather_wave_map(?array $marine): array
         }
     }
     return $map;
+}
+
+/**
+ * จับคู่เวลา -> อุณหภูมิผิวน้ำทะเล
+ * ใช้กติกาเดียวกับ fis_weather_wave_map คือจับด้วยเวลา ไม่ใช่ตำแหน่งในอาร์เรย์
+ *
+ * @param array<string, mixed>|null $marine
+ * @return array<string, float|null>
+ */
+function fis_weather_sea_map(?array $marine): array
+{
+    if ($marine === null) {
+        return [];
+    }
+
+    $times = $marine['hourly']['time'] ?? null;
+    $temps = $marine['hourly']['sea_surface_temperature'] ?? null;
+    if (!is_array($times) || !is_array($temps)) {
+        return [];
+    }
+
+    $map = [];
+    foreach ($times as $i => $t) {
+        if (is_string($t)) {
+            $map[$t] = fis_weather_float($temps[$i] ?? null);
+        }
+    }
+    return $map;
+}
+
+/**
+ * สรุปอุณหภูมิน้ำรายวันจากค่ารายชั่วโมง
+ *
+ * ทำไมต้องสรุปรายวัน: วัดจริงแล้วอุณหภูมิน้ำแกว่งในวันเดียวราว 0.4 องศา
+ * และต่างกันแค่ 0.01 องศาระหว่างวันแรกกับวันที่แปด (ปัตตานี ส.ค. 2569)
+ * กราฟรายชั่วโมงจึงเป็นเส้นแบนที่ไม่บอกอะไร ค่าต่ำสุด-สูงสุด-เฉลี่ยของแต่ละวัน
+ * บอกได้ตรงกว่าว่า "นิ่ง" จริง ๆ และจะเห็นความต่างชัดตอนเปลี่ยนฤดูมรสุม
+ *
+ * @param array<string, float|null> $seaMap
+ * @return list<array<string, mixed>>
+ */
+function fis_weather_sea_daily(array $seaMap): array
+{
+    $byDate = [];
+    foreach ($seaMap as $time => $value) {
+        if ($value === null) {
+            continue;
+        }
+        $date = substr((string) $time, 0, 10);
+        $byDate[$date][] = $value;
+    }
+    ksort($byDate);
+
+    $daily = [];
+    foreach ($byDate as $date => $values) {
+        $daily[] = [
+            'date' => $date,
+            'min_c' => round(min($values), 1),
+            'max_c' => round(max($values), 1),
+            'mean_c' => round(array_sum($values) / count($values), 1),
+        ];
+    }
+    return $daily;
 }
 
 /** ทิศลมภาษาไทย 8 ทิศ แบ่งช่องละ 45 องศา โดยให้ 0 องศาอยู่กึ่งกลางช่อง "เหนือ" */

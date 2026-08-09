@@ -10,7 +10,7 @@
 /* เลขเวอร์ชัน — ที่นี่ที่เดียวเป็นแหล่งความจริง
    ปล่อยรุ่น = แก้เลขนี้ + สร้าง git tag ชื่อเดียวกัน (vX.Y.Z) แล้ว push tags
    ค่าใน index.html เป็นแค่ตัวสำรองตอน JS ยังไม่ทำงาน ต้องตรงกับค่านี้เสมอ */
-const APP_VERSION = '0.6.0';
+const APP_VERSION = '0.7.0';
 
 const TH_DAY_ABBR = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 const TH_MONTH_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -340,6 +340,7 @@ const metricFields = [
   { value: 'metricWave', note: 'metricWaveNote' },
   { value: 'metricRain', note: 'metricRainNote' },
   { value: 'metricPressure', note: 'metricPressureNote' },
+  { value: 'metricSea', note: 'metricSeaNote' },
 ];
 
 function setMetricsPlaceholder(note) {
@@ -379,6 +380,16 @@ function renderWeather(payload) {
     setMetric(document.getElementById('metricRain'), roundTo(current.precipitation_probability_pct, 0), '%');
     document.getElementById('metricRainNote').textContent = 'โอกาสมีฝน';
 
+    /* อุณหภูมิน้ำมาจาก Marine API ซึ่งอาจไม่มีค่าที่จุดชิดฝั่งมาก ๆ
+       ต้องบอกตรง ๆ เหมือนที่ทำกับความสูงคลื่น ห้ามเดาค่าให้ */
+    if (isFiniteNumber(current.sea_temperature_c)) {
+      setMetric(document.getElementById('metricSea'), formatSeaTemp(current.sea_temperature_c), '°C');
+      document.getElementById('metricSeaNote').textContent = 'ผิวน้ำทะเล';
+    } else {
+      setMetric(document.getElementById('metricSea'), 'ไม่มีข้อมูล', '');
+      document.getElementById('metricSeaNote').textContent = 'จุดนี้ไม่มีข้อมูลอุณหภูมิน้ำ';
+    }
+
     setMetric(document.getElementById('metricPressure'), roundTo(current.pressure_hpa, 0), 'hPa');
     document.getElementById('metricPressureNote').textContent = current.observed_at
       ? `วัดเมื่อ ${formatIsoTime(current.observed_at)} น.`
@@ -396,7 +407,77 @@ function renderWeather(payload) {
   }
 
   renderHourly(hourly);
+  renderSeaOutlook((payload.data && payload.data.sea_temperature_daily) || []);
   renderSource(document.getElementById('weatherSource'), payload.meta);
+}
+
+/* อุณหภูมิน้ำต้องมีทศนิยมหนึ่งตำแหน่งเสมอ
+   roundTo ตัดศูนย์ท้ายทิ้ง ทำให้ 32.0 กลายเป็น 32 แล้วเลขในแถวเดียวกันกว้างไม่เท่ากัน
+   ที่สำคัญกว่านั้นคือความต่างระดับ 0.1 องศาเป็นสิ่งที่เราตั้งใจให้เห็น จึงห้ามตัดทิ้ง */
+function formatSeaTemp(value) {
+  return isFiniteNumber(value) ? Number(value).toFixed(1) : '—';
+}
+
+/**
+ * พยากรณ์อุณหภูมิน้ำรายวัน
+ *
+ * ทำไมแสดงเป็นแถบรายวัน ไม่ใช่กราฟรายชั่วโมง:
+ * วัดจริงจากข้อมูลปัจจุบันแล้ว อุณหภูมิน้ำแกว่งในวันเดียวราว 0.4 องศา
+ * และต่างกันแค่ 0.01 องศาระหว่างวันแรกกับวันที่แปด
+ * กราฟรายชั่วโมงจึงเป็นเส้นแบนที่ทำให้คนคิดว่าระบบพัง ทั้งที่ข้อมูลถูก
+ *
+ * แถบรายวันพร้อมช่วงต่ำสุด-สูงสุดบอกความจริงข้อนั้นตรง ๆ ว่า "นิ่ง"
+ * และจะเห็นความต่างชัดตอนเปลี่ยนฤดูมรสุมซึ่งเป็นตอนที่ตัวเลขนี้มีความหมายจริง
+ */
+function renderSeaOutlook(daily) {
+  const box = document.getElementById('seaOutlook');
+
+  if (!Array.isArray(daily) || daily.length === 0) {
+    box.hidden = true;
+    return;
+  }
+
+  const means = daily.map((day) => day.mean_c).filter(isFiniteNumber);
+  if (means.length === 0) {
+    box.hidden = true;
+    return;
+  }
+
+  box.hidden = false;
+
+  const low = Math.min(...means);
+  const high = Math.max(...means);
+  const spread = high - low;
+
+  document.getElementById('seaOutlookRange').textContent =
+    `${formatSeaTemp(low)}–${formatSeaTemp(high)} °C ตลอด ${daily.length} วัน`;
+
+  const today = isoDate(new Date());
+  document.getElementById('seaDays').innerHTML = daily.map((day) => {
+    const date = dateFromIso(day.date);
+    const mean = formatSeaTemp(day.mean_c);
+    const range = isFiniteNumber(day.min_c) && isFiniteNumber(day.max_c)
+      ? `${formatSeaTemp(day.min_c)}–${formatSeaTemp(day.max_c)}`
+      : '—';
+    const on = day.date === activeDate ? ' on' : '';
+    const label = day.date === today ? 'วันนี้' : TH_DAY_ABBR[date.getDay()];
+    return `<div class="sea-day${on}">`
+      + `<small>${escapeHtml(label)}</small>`
+      + `<b>${escapeHtml(String(mean))}°</b>`
+      + `<span>${escapeHtml(range)}</span>`
+      + '</div>';
+  }).join('');
+
+  /* บอกความหมายของตัวเลข ไม่ใช่โยนตัวเลขทิ้งไว้เฉย ๆ
+     ครึ่งองศาในหนึ่งสัปดาห์แปลว่าไม่มีแนวน้ำเปลี่ยนให้ตามในช่วงนี้ */
+  const change = spread < 0.3
+    ? 'แทบไม่เปลี่ยนตลอดช่วงนี้'
+    : `เปลี่ยนได้ถึง ${formatSeaTemp(spread)}°C ระหว่างวันในช่วงนี้`;
+
+  document.getElementById('seaNote').textContent =
+    `อุณหภูมิน้ำ${change} · ตัวเลขนี้เป็นค่าที่จุดเดียว `
+    + 'จึงบอกได้แค่ว่าน้ำตรงนี้อุ่นหรือเย็นลง '
+    + 'บอกไม่ได้ว่ามีแนวน้ำ (thermal front) อยู่ตรงไหน เพราะแนวน้ำคือความต่างตามระยะทาง ไม่ใช่ตามวัน';
 }
 
 function renderHourly(hourly) {
@@ -423,11 +504,14 @@ function renderHourly(hourly) {
     const height = Math.max(6, Math.round((speeds[index] / peak) * 100));
     const temperature = isFiniteNumber(hour.temperature_c) ? `${roundTo(hour.temperature_c, 0)}°` : '—';
     const wind = isFiniteNumber(hour.wind_speed_kmh) ? `${roundTo(hour.wind_speed_kmh)} km/h` : '—';
+    // ติดสัญลักษณ์คลื่นไว้หน้าอุณหภูมิน้ำ ให้แยกออกจากอุณหภูมิอากาศที่อยู่บรรทัดบน
+    const sea = isFiniteNumber(hour.sea_temperature_c) ? `≋ ${formatSeaTemp(hour.sea_temperature_c)}°` : '';
     return `<div class="hour${index === 0 ? ' active-hour' : ''}">`
       + `<b>${escapeHtml(formatIsoTime(hour.time))}</b>`
       + `<span>${weatherGlyph(hour.weather_code)}</span>`
       + `<strong>${escapeHtml(temperature)}</strong>`
       + `<small>${escapeHtml(wind)}</small>`
+      + (sea ? `<em class="hour-sea">${escapeHtml(sea)}</em>` : '')
       + `<span class="bar"><i style="height:${height}%"></i></span>`
       + '</div>';
   }).join('');
