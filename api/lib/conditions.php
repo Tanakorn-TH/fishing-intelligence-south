@@ -47,6 +47,13 @@ const FIS_CHL_BOX_DEG = 0.04;
    ดึงถี่กว่านี้คือรบกวนเซิร์ฟเวอร์สาธารณะโดยไม่ได้ค่าใหม่อะไรเลย */
 const FIS_CHL_CACHE_TTL = 43200;
 
+/* แคชกรณี "ดึงไม่ได้" สั้นกว่ากรณีที่ได้คำตอบมาก
+   เพราะสองอย่างนี้คนละเรื่อง: "เมฆบังทั้งเดือน" จะไม่เปลี่ยนภายในวันนี้แน่ ๆ
+   แต่ "ต่อปลายทางไม่ติด" เป็นเรื่องชั่วคราวที่หายเองได้ในไม่กี่นาที
+   ถ้าจำความล้มเหลวไว้ 12 ชั่วโมงเท่ากัน เน็ตสะดุดครั้งเดียวจะทำให้ค่าหายไปทั้งวัน
+   สั้นกว่านี้ก็ไม่ดี เพราะถ้าปลายทางล่มยาวจะกลายเป็นยิงซ้ำทุกคำขอแล้วหน้าเว็บช้า */
+const FIS_CHL_FAIL_TTL = 900;
+
 const FIS_TIDES_TZ = 'Asia/Bangkok';
 const FIS_TIDES_CACHE_TTL = 1800;
 const FIS_TIDES_MAX_AHEAD_DAYS = 7;
@@ -238,9 +245,17 @@ function fis_chlorophyll_payload(float $lat, float $lon): ?array
     $lon = round($lon, 2);
 
     $cacheKey = sprintf('chl:%.2f:%.2f', $lat, $lon);
+
+    // คำตอบที่ได้จริง (รวมถึง "เมฆบังทั้งเดือน") เก็บยาว เพราะข้อมูลออกเดือนละครั้ง
     $cached = fis_cache_get($cacheKey, FIS_CHL_CACHE_TTL);
-    if ($cached !== null) {
+    if ($cached !== null && ($cached['failed'] ?? false) !== true) {
         return $cached['value'] ?? null;
+    }
+
+    // ส่วนความล้มเหลว ยอมจำไว้แค่ช่วงสั้น ๆ แล้วลองใหม่
+    $recent = fis_cache_get($cacheKey, FIS_CHL_FAIL_TTL);
+    if ($recent !== null && ($recent['failed'] ?? false) === true) {
+        return null;
     }
 
     try {
@@ -248,12 +263,12 @@ function fis_chlorophyll_payload(float $lat, float $lon): ?array
     } catch (FisRemoteException $e) {
         // ของเสริม ล้มได้โดยไม่ทำให้สภาพอากาศทั้งก้อนล้มตาม
         error_log('[fishing-api/chlorophyll] ดึงไม่ได้: ' . $e->getMessage());
+        fis_cache_put($cacheKey, ['value' => null, 'failed' => true]);
         return null;
     }
 
     $parsed = fis_chlorophyll_parse($csv);
-    // เก็บลงแคชทั้งกรณีที่ได้ค่าและกรณีที่ไม่มีค่า จะได้ไม่ยิงซ้ำทุกครั้งที่เมฆบัง
-    fis_cache_put($cacheKey, ['value' => $parsed]);
+    fis_cache_put($cacheKey, ['value' => $parsed, 'failed' => false]);
 
     return $parsed;
 }
