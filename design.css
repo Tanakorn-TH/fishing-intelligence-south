@@ -1534,3 +1534,76 @@ body {
 }
 
 .day.unknown span { opacity: .5; }
+
+/* ═══ อุณหภูมิน้ำทะเล ══════════════════════════════════════════════════
+   วัดจากข้อมูลจริงแล้วอุณหภูมิน้ำแทบไม่ขยับตลอดแปดวัน (ต่างกัน 0.01 องศา
+   ที่ปัตตานี ส.ค. 2569) จึงไม่ทำเป็นกราฟ เพราะเส้นแบนทำให้คนคิดว่าระบบพัง
+   แสดงเป็นแถบรายวันพร้อมช่วงต่ำสุด-สูงสุดแทน ซึ่งบอกความจริงว่า "นิ่ง" ได้ตรงกว่า */
+
+.hour-sea {
+  font: 8.5px var(--font-mono);
+  font-style: normal;
+  color: #4fd6c4;
+}
+
+.sea-outlook {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--glass-line);
+}
+
+.sea-outlook[hidden] { display: none; }
+
+.sea-outlook-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sea-outlook-head .eyebrow { margin: 0; }
+
+#seaOutlookRange {
+  font: 10.5px var(--font-mono);
+  color: #4fd6c4;
+}
+
+/* เลื่อนแนวนอนบนจอแคบ ไม่ห่อบรรทัด เพราะลำดับวันต้องอ่านต่อเนื่องจากซ้ายไปขวา */
+.sea-days {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.sea-day {
+  flex: 1 0 auto;
+  min-width: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 5px;
+  border: 1px solid var(--glass-line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .03);
+  line-height: 1.25;
+}
+
+.sea-day small { font: 9px var(--font-mono); color: #83a2a7; }
+.sea-day b { font: 14px var(--font-mono); color: #d9f2f0; }
+.sea-day span { font: 8.5px var(--font-mono); color: #6f9199; }
+
+/* วันที่กำลังดูอยู่ ใช้สีเดียวกับชิปวันที่บนแถบบน เพื่อให้เชื่อมโยงกันได้ */
+.sea-day.on {
+  border-color: #37d9d1;
+  background: rgba(55, 217, 209, .12);
+}
+
+.sea-note {
+  margin: 9px 0 0;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: #7e9fa6;
+}

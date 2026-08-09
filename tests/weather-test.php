@@ -87,7 +87,8 @@ if ($r['status'] === 200 && is_array($r['json'])) {
     echo "\n--- โครงสร้างตามสัญญา: data.current ---\n";
     foreach ([
         'observed_at', 'temperature_c', 'wind_speed_kmh', 'wind_direction_deg',
-        'wind_direction_label', 'wave_height_m', 'precipitation_probability_pct', 'pressure_hpa',
+        'wind_direction_label', 'wave_height_m', 'sea_temperature_c',
+        'precipitation_probability_pct', 'pressure_hpa',
     ] as $field) {
         check("current มีคีย์ {$field}", array_key_exists($field, $current));
     }
@@ -135,7 +136,8 @@ if ($r['status'] === 200 && is_array($r['json'])) {
     check('hourly คืน 24 ชั่วโมง', count($hourly) === 24, 'ได้ ' . count($hourly) . ' รายการ');
     if ($hourly !== []) {
         $first = $hourly[0];
-        foreach (['time', 'temperature_c', 'wind_speed_kmh', 'wave_height_m', 'weather_code'] as $field) {
+        foreach (['time', 'temperature_c', 'wind_speed_kmh', 'wave_height_m',
+                  'sea_temperature_c', 'weather_code'] as $field) {
             check("hourly[0] มีคีย์ {$field}", array_key_exists($field, $first));
         }
         check('hourly[0].time เป็น ISO 8601 พร้อม +07:00',
@@ -237,6 +239,64 @@ check('POST ถูกปฏิเสธด้วย 405', $r['status'] === 405, 
 check('405 คืน error.code = method_not_allowed',
       isset($r['json']['error']['code']) && $r['json']['error']['code'] === 'method_not_allowed',
       substr($r['body'], 0, 120));
+
+echo "\n--- อุณหภูมิผิวน้ำทะเล ---\n";
+
+/* น้ำทะเลแถบอันดามันและอ่าวไทยอยู่ราว 24-34 องศาตลอดปี
+   ช่วงนี้กว้างพอจะไม่ล้มตามฤดู แต่แคบพอจะจับได้ถ้าปลายทางเปลี่ยนหน่วย
+   หรือถ้าเราเผลอเอาอุณหภูมิอากาศมาใส่ช่องนี้ */
+$seaNow = $current['sea_temperature_c'] ?? null;
+check('อุณหภูมิน้ำเป็นตัวเลขหรือ null ตามสัญญา', $seaNow === null || is_numeric($seaNow),
+      var_export($seaNow, true));
+if (is_numeric($seaNow)) {
+    check('อุณหภูมิน้ำอยู่ในช่วงที่เป็นไปได้ของทะเลไทย (24-34 องศา)',
+          $seaNow >= 24.0 && $seaNow <= 34.0, var_export($seaNow, true));
+}
+
+$daily = $data['sea_temperature_daily'] ?? null;
+check('มี data.sea_temperature_daily เป็นอาร์เรย์', is_array($daily), gettype($daily));
+
+if (is_array($daily) && $daily !== []) {
+    check('พยากรณ์อุณหภูมิน้ำครอบคลุมมากกว่าหนึ่งวัน', count($daily) > 1,
+          'ได้ ' . count($daily) . ' วัน');
+
+    $shape = true;
+    $ordered = true;
+    $sane = true;
+    $previous = '';
+    foreach ($daily as $row) {
+        foreach (['date', 'min_c', 'max_c', 'mean_c'] as $field) {
+            if (!array_key_exists($field, $row)) {
+                $shape = false;
+            }
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($row['date'] ?? '')) !== 1) {
+            $shape = false;
+        }
+        // วันต้องเรียงจากน้อยไปมาก ไม่งั้นแถบวันบนหน้าเว็บจะสลับกัน
+        if ($previous !== '' && strcmp((string) $row['date'], $previous) <= 0) {
+            $ordered = false;
+        }
+        $previous = (string) ($row['date'] ?? '');
+
+        // ค่าต่ำสุดต้องไม่เกินค่าสูงสุด และค่าเฉลี่ยต้องอยู่ระหว่างสองค่านั้น
+        if (is_numeric($row['min_c'] ?? null) && is_numeric($row['max_c'] ?? null)
+            && is_numeric($row['mean_c'] ?? null)) {
+            if ($row['min_c'] > $row['max_c']
+                || $row['mean_c'] < $row['min_c'] - 0.05
+                || $row['mean_c'] > $row['max_c'] + 0.05) {
+                $sane = false;
+            }
+        }
+    }
+    check('ทุกแถวมีครบ date/min_c/max_c/mean_c และวันที่ถูกรูปแบบ', $shape);
+    check('เรียงวันจากเก่าไปใหม่', $ordered);
+    check('min <= mean <= max ทุกแถว', $sane);
+
+    $firstDay = $daily[0]['date'] ?? '';
+    check('วันแรกของพยากรณ์คือวันนี้', $firstDay === date('Y-m-d'),
+          "ได้ {$firstDay} คาด " . date('Y-m-d'));
+}
 
 echo "\nผ่าน {$passed} ข้อ ไม่ผ่าน {$failed} ข้อ\n";
 exit($failed === 0 ? 0 : 1);

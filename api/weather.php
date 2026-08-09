@@ -25,7 +25,11 @@ fis_handle(function (): void {
     $lon = fis_conditions_coord('lon', -180.0, 180.0);
 
     try {
-        $payload = fis_weather_payload($lat, $lon);
+        /* ขอเต็มช่วงเดียวกับที่ตัวคิดคะแนนใช้ ด้วยเหตุผลสองข้อ
+           หนึ่ง sea_temperature_daily จะได้เป็นพยากรณ์จริง ไม่ใช่แค่วันนี้กับพรุ่งนี้
+           สอง แคชก้อนเดียวกับ /api/score.php จึงยิงไปปลายทางน้อยลง
+           แถวรายชั่วโมงที่ส่งกลับยังคงเท่าเดิมที่ FIS_WEATHER_HOURS ชั่วโมง */
+        $payload = fis_weather_payload($lat, $lon, FIS_WEATHER_MAX_DAYS);
     } catch (FisRemoteException $e) {
         error_log('[fishing-api/weather] ' . $e->getMessage());
         fis_fail(
