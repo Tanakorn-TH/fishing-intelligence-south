@@ -8,6 +8,11 @@ declare(strict_types=1);
  * ชุดนี้แยกจาก api-test.php เพราะไม่ต้องใช้ฐานข้อมูล แต่ต้องต่ออินเทอร์เน็ตออกไป Open-Meteo ได้
  */
 
+/* โหลดตรง ๆ เพื่อทดสอบตัวแยก CSV โดยไม่ต้องพึ่งปลายทางภายนอก
+   บางบั๊กมองไม่เห็นผ่าน HTTP เลย เช่นตัวแยกที่คืน null เพราะ regex พัง
+   ซึ่งหน้าตาเหมือน "เมฆบัง ไม่มีข้อมูล" ทุกประการเมื่อดูจากข้างนอก */
+require_once __DIR__ . '/../api/lib/conditions.php';
+
 $base = getenv('API_BASE');
 if (!is_string($base) || $base === '') {
     $base = 'http://127.0.0.1:8099';
@@ -388,6 +393,43 @@ if (is_array($chl)) {
     check('chlorophyll ที่เป็น null ต้องเป็น null จริง ไม่ใช่อาร์เรย์ว่าง',
           $chl === null, var_export($chl, true));
 }
+
+echo "\n--- ตัวแยก CSV ของคลอโรฟิลล์ (ไม่ต้องต่อเน็ต) ---\n";
+
+/* ข้อทดสอบชุดนี้มีเพราะเคยพลาดมาแล้วจริง
+   regex ที่ใช้ตัดบรรทัดถูกเขียนพังจนกลายเป็นอักขระขึ้นบรรทัดจริงแทน \r\n
+   ตัวแยกเลยคืน null ทุกครั้ง ซึ่งจากภายนอกดูเหมือน "เมฆบัง ไม่มีข้อมูล" เป๊ะ ๆ
+   ใช้เวลาไล่หลายรอบกว่าจะรู้ว่าไม่ใช่เมฆ ทั้งที่ทดสอบตรงนี้ใช้เวลาไม่ถึงวินาที */
+
+$csvHeader = "time,latitude,longitude,chlorophyll\nUTC,degrees_north,degrees_east,mg m-3\n";
+$csvRows = "2026-07-16T00:00:00Z,6.97,101.43,0.60\n"
+    . "2026-07-16T00:00:00Z,6.93,101.47,1.40\n"
+    . "2026-07-16T00:00:00Z,6.89,101.52,NaN\n";
+
+foreach ([
+    'ลงท้ายบรรทัดแบบ LF' => $csvHeader . $csvRows,
+    'ลงท้ายบรรทัดแบบ CRLF' => str_replace("\n", "\r\n", $csvHeader . $csvRows),
+] as $label => $csv) {
+    $parsed = fis_chlorophyll_parse($csv);
+    check("แยก CSV ได้เมื่อ{$label}", $parsed !== null,
+          $parsed === null ? 'ได้ null' : 'ok');
+    if ($parsed !== null) {
+        check("  นับเฉพาะเซลล์ที่มีค่า ข้าม NaN ({$label})", $parsed['cells_used'] === 2,
+              'ได้ ' . $parsed['cells_used']);
+        check("  มัธยฐานของ 0.60 กับ 1.40 = 1.00 ({$label})",
+              abs($parsed['value_mg_m3'] - 1.0) < 0.001, 'ได้ ' . $parsed['value_mg_m3']);
+        check("  อ่านเดือนจากคอลัมน์เวลา ({$label})", $parsed['observed_month'] === '2026-07',
+              var_export($parsed['observed_month'], true));
+        check("  ค่าที่ดึงสดต้องไม่ติดธงว่าเก่า ({$label})", $parsed['is_stale'] === false);
+    }
+}
+
+// CSV ที่มีแต่หัวตาราง (เมฆบังทั้งกรอบ) ต้องได้ null ไม่ใช่ศูนย์
+check('CSV ที่ไม่มีแถวข้อมูลเลย -> null', fis_chlorophyll_parse($csvHeader) === null);
+
+// ทุกเซลล์เป็น NaN ก็ต้องได้ null เช่นกัน ห้ามนับ NaN เป็นค่า 0
+$allNaN = $csvHeader . "2026-07-16T00:00:00Z,6.97,101.43,NaN\n2026-07-16T00:00:00Z,6.93,101.47,NaN\n";
+check('ทุกเซลล์เป็น NaN -> null ไม่ใช่ 0', fis_chlorophyll_parse($allNaN) === null);
 
 echo "\nผ่าน {$passed} ข้อ ไม่ผ่าน {$failed} ข้อ\n";
 exit($failed === 0 ? 0 : 1);
