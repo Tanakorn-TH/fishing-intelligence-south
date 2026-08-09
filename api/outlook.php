@@ -113,7 +113,9 @@ function fis_outlook_days(): int
  */
 function fis_outlook_day(float $lat, float $lon, string $date, DateTimeZone $tz): array
 {
-    $weather = fis_weather_payload($lat, $lon);
+    // ปฏิทินมองไปข้างหน้าหลายวัน จึงต้องขอพยากรณ์เต็มช่วงที่มี
+    // ไม่งั้นทุกวันในปฏิทินจะได้ลมและคลื่นชุดเดียวกันหมดคือของวันนี้
+    $weather = fis_weather_payload($lat, $lon, FIS_WEATHER_MAX_DAYS);
     $tides = fis_tides_payload($lat, $lon, $date);
 
     $dayStart = DateTimeImmutable::createFromFormat(
@@ -130,7 +132,7 @@ function fis_outlook_day(float $lat, float $lon, string $date, DateTimeZone $tz)
     $factors = fis_score_factors($weather, $tides, $solunar, $at, $tz);
     $styles = fis_score_all_styles($factors);
     $overall = fis_score_overall($styles);
-    $safety = fis_score_safety($weather['data']['current'] ?? []);
+    $safety = fis_score_safety(fis_weather_conditions_at($weather, $at));
 
     return [
         'date' => $date,

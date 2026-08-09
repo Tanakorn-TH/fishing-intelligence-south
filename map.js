@@ -19,7 +19,37 @@ const MAP_COLORS = {
   pin: '#c8542a',
   pinActive: '#1d9e75',
   label: '#7a3419',
+
+  /* เส้นเขตแดน — ม่วงอมเทา ไม่ชนกับน้ำตาลของชายฝั่งและน้ำเงินของเส้นความลึก
+     เขตประเทศเข้มกว่าเขตจังหวัดโดยตั้งใจ เพราะการข้ามเส้นสองอันนี้
+     มีผลต่างกันคนละเรื่อง อันหนึ่งแค่เปลี่ยนป้ายทะเบียน อีกอันคือเข้าน่านน้ำต่างชาติ
+     ตรวจ contrast บนพื้นแผ่นดินแล้ว: ประเทศ 7.03:1 จังหวัด 3.19:1 */
+  borderCountry: '#5d3a63',
+  borderProvince: '#8f7194',
+
+  /* ปะการังเทียมกับหมายใช้สีเดียวกัน แล้วแยกกันด้วยรูปทรง
+     เพราะทั้งคู่คือ "โครงสร้างใต้น้ำที่ปลารวมตัว" เหมือนกัน ต่างกันแค่ใครสร้าง
+     ให้รูปทรงเป็นตัวบอกชนิด สีจึงไม่ต้องเพิ่มอีกเฉด ตรวจแล้ว 5.61:1 บนพื้นทะเล */
+  structure: '#0e6b60',
+  structureActive: '#c8542a',
 };
+
+/* ไอคอนวาดในระบบพิกัดหน่วยเดียว กว้างยาวราว -1.2 ถึง 1.2 แล้วค่อยย่อขยายตอนวาด
+   เขียนเป็น path เดียวต่อหนึ่งหมุด เพราะบนแผนที่มีหมุดกว่าร้อยจุด
+   ถ้าแตกเป็นหลาย element ต่อหมุด จำนวน node จะพุ่งขึ้นเป็นหลายเท่าโดยไม่ได้อะไรกลับมา */
+
+/* ปลา — ลำตัวโค้งกับหางสามเหลี่ยม หันหัวไปทางขวา */
+const ICON_FISH = 'M1,0C0.45,-0.62 -0.3,-0.58 -0.6,0C-0.3,0.58 0.45,0.62 1,0Z'
+  + 'M-0.6,0L-1.15,-0.52L-1.15,0.52Z';
+
+/* ปะการังเทียม — สี่เหลี่ยมสามอันวางซ้อนกัน
+   ล้อของจริงตรง ๆ เพราะที่กรมประมงวางคือแท่งคอนกรีตทรงลูกบาศก์ 1.5x1.5x1.5 เมตร
+   คนที่เคยเห็นของจริงจะอ่านสัญลักษณ์นี้ออกทันทีโดยไม่ต้องดูคำอธิบาย */
+const ICON_REEF = (() => {
+  const side = 0.78;
+  const box = (x, y) => `M${x},${y}h${side}v${side}h${-side}Z`;
+  return box(-0.82, 0.04) + box(0.04, 0.04) + box(-0.39, -0.82);
+})();
 
 /* สีเส้นความลึก ผ่านการตรวจ contrast บนพื้นครีมมาแล้ว 3.34:1 ถึง 12.96:1
    ไล่เข้มตามความลึก ซึ่งเป็นสัญชาตญาณที่คนทั่วไปเข้าใจตรงกัน */
@@ -70,10 +100,14 @@ class SpotMap {
     this.svg = svg;
     this.coast = null;
     this.depth = null;
+    this.borders = null;
     this.places = [];
+    this.sites = [];         // ปะการังเทียมและหมาย รวมอยู่ชั้นเดียวกัน
     this.selectedId = null;
+    this.selectedSiteKey = null;
     this.origin = null;      // ตำแหน่งผู้ใช้ ถ้ามี
     this.onPick = null;
+    this.onPickSite = null;
 
     this.view = {
       x: mapProjectX(MAP_HOME.west),
@@ -91,7 +125,9 @@ class SpotMap {
     // เส้นและหมุดต้องคงขนาดที่ตาเห็นไว้ ไม่ว่าจะซูมเท่าไหร่
     // จึงคำนวณขนาดกลับตามอัตราส่วนของ viewBox ทุกครั้งที่มุมมองเปลี่ยน
     this.svg.style.setProperty('--map-scale', String(w / this.view0w));
+    this.renderBorders();
     this.renderDepth();
+    this.renderSites();
     this.renderPins();
   }
 
@@ -206,8 +242,16 @@ class SpotMap {
     // แยกการลากออกจากการแตะเลือก ไม่งั้นลากแผนที่แล้วหมุดจะถูกเลือกโดยไม่ตั้งใจ
     this.svg.addEventListener('click', (event) => {
       if (moved > 8) return;
+
       const pin = event.target.closest('[data-place-id]');
-      if (pin && this.onPick) this.onPick(pin.dataset.placeId);
+      if (pin && this.onPick) {
+        this.onPick(pin.dataset.placeId);
+        return;
+      }
+
+      // ปะการังเทียมกับหมายเลือกได้เหมือนกัน — คนตกปลาสนใจพิกัดของกองมากกว่าชื่อตำบล
+      const site = event.target.closest('[data-site-key]');
+      if (site && this.onPickSite) this.onPickSite(site.dataset.siteKey);
     });
   }
 
@@ -249,6 +293,93 @@ class SpotMap {
 
       return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}"`
         + ` stroke-dasharray="${dash}" stroke-linecap="round" />`;
+    }).join('');
+  }
+
+  /**
+   * เส้นเขตแดนประเทศและเส้นแบ่งจังหวัด
+   *
+   * วาดเป็นเส้นทึบ ต่างจากเส้นความลึกที่ต้องเป็นเส้นประเสมอ
+   * ไม่ใช่เรื่องความสวย แต่เพราะสองอย่างนี้ตอบคนละคำถาม
+   * เขตแดนเป็นข้อตกลงที่มีตำแหน่งแน่นอน ส่วนความลึกเป็นค่าประมาณจากการหยั่ง
+   *
+   * ⚠️ ในทะเลไม่มีเส้น — Natural Earth ให้เฉพาะเขตแดนบนบก
+   * ห้ามใช้ตัดสินว่าเรืออยู่ในน่านน้ำประเทศไหน
+   */
+  setBorders(geojson) {
+    this.borders = geojson;
+    this.renderBorders();
+  }
+
+  renderBorders() {
+    const layer = this.svg.querySelector('#mapBorders');
+    if (!layer || !this.borders) return;
+
+    const scale = this.view.w / this.view0w;
+
+    layer.innerHTML = this.borders.features.map((feature) => {
+      const country = feature.properties.kind === 'country';
+      const color = country ? MAP_COLORS.borderCountry : MAP_COLORS.borderProvince;
+      const width = (country ? 0.014 : 0.008) * scale;
+      const points = feature.geometry.coordinates.map(([lon, lat]) =>
+        `${mapProjectX(lon).toFixed(4)},${mapProjectY(lat).toFixed(4)}`);
+
+      return `<path d="M${points.join('L')}" fill="none" stroke="${color}"`
+        + ` stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" />`;
+    }).join('');
+  }
+
+  /**
+   * ปะการังเทียมและหมาย
+   *
+   * รับมาเป็นชั้นเดียวเพราะทั้งคู่คือโครงสร้างใต้น้ำที่ใช้ตัดสินใจแบบเดียวกัน
+   * แต่ละรายการต้องมี key ที่ไม่ซ้ำ ชนิด (reef | mark) และพิกัด
+   */
+  setSites(sites) {
+    this.sites = sites;
+    this.renderSites();
+  }
+
+  setSelectedSite(key) {
+    this.selectedSiteKey = key;
+    this.renderSites();
+  }
+
+  renderSites() {
+    const layer = this.svg.querySelector('#mapSites');
+    if (!layer) return;
+
+    // ขนาดคงที่ในสายตา จึงหารด้วยอัตราซูมเหมือนหมุดและเส้นความลึก
+    const scale = this.view.w / this.view0w;
+    // ต้องใหญ่พอให้แยกออกว่าเป็นปลาหรือสี่เหลี่ยมซ้อน ไม่งั้นรูปทรงที่ใช้แทนชนิดก็เปล่าประโยชน์
+    // เคยตั้งไว้ 0.038 แล้ววัดได้ 4.2 พิกเซล ซึ่งเล็กเกินกว่าจะเห็นเป็นรูปอะไร
+    // ค่านี้ให้ราว 11 พิกเซล กองที่อยู่ชิดกันจะทับกันบ้างตอนดูทั้งภาค
+    // ซึ่งยอมรับได้ เพราะมันสื่อว่าตรงนั้นมีกองหนาแน่นจริง
+    const size = 0.072 * scale;
+    const stroke = 0.01 * scale;
+    const fontSize = 0.1 * scale;
+
+    // ป้ายชื่อเฉพาะตอนซูมเข้ามาแล้ว ไม่งั้นหมายร้อยกว่าจุดจะทับกันจนอ่านไม่ออก
+    const showLabels = scale < 0.22;
+
+    layer.innerHTML = this.sites.map((site) => {
+      const x = mapProjectX(site.lon);
+      const y = mapProjectY(site.lat);
+      const active = site.key === this.selectedSiteKey;
+      const color = active ? MAP_COLORS.structureActive : MAP_COLORS.structure;
+      const icon = site.kind === 'reef' ? ICON_REEF : ICON_FISH;
+      const s = active ? size * 1.3 : size;
+
+      // เส้นขอบสีพื้นทะเลทำให้หมุดไม่จมหายเมื่อทับเส้นความลึกหรือเส้นเขตแดน
+      return `<g data-site-key="${escapeHtml(site.key)}" style="cursor:pointer">`
+        + `<path transform="translate(${x.toFixed(4)},${y.toFixed(4)}) scale(${s.toFixed(5)})"`
+        + ` d="${icon}" fill="${color}" stroke="${MAP_COLORS.sea}" stroke-width="${(stroke / s).toFixed(4)}"`
+        + ` stroke-linejoin="round" />`
+        + (showLabels || active
+          ? `<text x="${(x + s * 1.5).toFixed(4)}" y="${(y + fontSize * 0.35).toFixed(4)}"`
+            + ` font-size="${fontSize}" fill="${MAP_COLORS.label}">${escapeHtml(site.label)}</text>`
+          : '')
+        + '</g>';
     }).join('');
   }
 

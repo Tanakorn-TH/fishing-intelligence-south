@@ -26,8 +26,13 @@ fis_handle(function (): void {
     // ขอบเขตจึงถูกจำกัดด้วยระยะพยากรณ์ของแบบจำลองน้ำอยู่ดี
     $date = fis_tides_date($tz);
 
+    // ขอพยากรณ์ให้ยาวพอครอบวันที่ถูกถาม ไม่งั้นจะไม่มีแถวของชั่วโมงนั้นให้คิด
+    $today = new DateTimeImmutable('today', $tz);
+    $daysAhead = (int) $today->diff(new DateTimeImmutable($date . ' 00:00:00', $tz))->format('%r%a');
+    $forecastDays = max(FIS_WEATHER_PANEL_DAYS, $daysAhead + 1);
+
     try {
-        $weather = fis_weather_payload($lat, $lon);
+        $weather = fis_weather_payload($lat, $lon, $forecastDays);
         $tides = fis_tides_payload($lat, $lon, $date);
     } catch (FisTidesNoDataException $e) {
         fis_tides_fail_no_data($date, $tz);
@@ -62,7 +67,10 @@ fis_handle(function (): void {
     $factors = fis_score_factors($weather, $tides, $solunar, $at, $tz);
     $styles = fis_score_all_styles($factors);
     $overall = fis_score_overall($styles);
-    $safety = fis_score_safety($weather['data']['current'] ?? []);
+    // คำเตือนความปลอดภัยต้องเป็นของวันที่ถูกถามด้วย ไม่งั้นจะเตือนว่าคลื่นสงบ
+    // ทั้งที่วันที่เขาจะออกเรือจริงคลื่นสองเมตร
+    $conditions = fis_weather_conditions_at($weather, $at);
+    $safety = fis_score_safety($conditions);
 
     fis_json([
         'data' => [

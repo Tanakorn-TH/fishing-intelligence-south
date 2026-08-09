@@ -51,8 +51,17 @@ fishing-intelligence-south/
 │   └── lib/              # config, PDO, JSON helper (ห้ามเรียกตรงจากเว็บ)
 ├── tests/                # ชุดทดสอบ API ที่ CI รัน
 ├── ops/                  # การนำขึ้นระบบจริง — deploy.sh และวิธีตั้งค่า
+├── map/                  # ชั้นข้อมูลแผนที่ (JSON สแตติก) สร้างจากสคริปต์ อย่าแก้ด้วยมือ
+├── db/                   # SQL สำหรับเติมข้อมูลลงตาราง สร้างจากสคริปต์
 ├── scripts/
-│   └── check-dom-ids.mjs # ตรวจว่า id ที่ app.js เรียกหา มีจริงใน index.html
+│   ├── check-dom-ids.mjs # ตรวจว่า id ที่ app.js เรียกหา มีจริงใน index.html
+│   ├── check-version.mjs # ตรวจว่าเลขเวอร์ชันตรงกันทุกที่ที่มันปรากฏ
+│   ├── geo.mjs           # ตัดกรอบและลดจุด ใช้ร่วมกันระหว่างสคริปต์สร้างแผนที่
+│   ├── build-coastline.mjs  # เส้นชายฝั่ง <- Natural Earth
+│   ├── build-borders.mjs    # เขตแดนประเทศและจังหวัด <- Natural Earth
+│   ├── build-bathymetry.mjs # เส้นความลึก <- NOAA ERDDAP
+│   ├── build-places.py      # รายชื่อจุดอ้างอิง <- GeoThai + Open-Meteo
+│   └── build-spots.py       # ปะการังเทียม <- กรมประมง · หมาย <- OpenStreetMap
 ├── .htmlvalidate.json    # ชุดกฎตรวจ HTML
 ├── .github/workflows/    # GitHub Actions
 └── README.md

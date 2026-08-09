@@ -59,8 +59,16 @@ echo "ผ่านครบ"
 # ประกาศชัดเจนทีละไฟล์ ไม่กวาดทั้งโฟลเดอร์
 # เพื่อไม่ให้ .git .env tests scripts หรือไฟล์เอกสารหลุดขึ้น production
 ROOT_FILES=(index.html styles.css design.css fonts.css app.js map.js)
-# ข้อมูลเส้นชายฝั่งสำหรับแผนที่เลือกหมาย สร้างด้วย scripts/build-coastline.mjs
-MAP_FILES=(map/coastline-south.json map/depth-south.json)
+# ชั้นข้อมูลของแผนที่ ทุกไฟล์สร้างด้วยสคริปต์ใน scripts/ ห้ามแก้ด้วยมือ
+#   coastline  <- build-coastline.mjs   borders <- build-borders.mjs
+#   depth      <- build-bathymetry.mjs  reefs กับ marks <- build-spots.py
+MAP_FILES=(
+  map/coastline-south.json
+  map/borders-south.json
+  map/depth-south.json
+  map/reefs-south.json
+  map/marks-south.json
+)
 API_FILES=(
   api/spots.php api/gear.php api/health.php
   api/weather.php api/solunar.php api/tides.php api/score.php api/places.php api/outlook.php

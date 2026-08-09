@@ -15,6 +15,11 @@ declare(strict_types=1);
  *   4. ความปลอดภัยไม่ถูกกลบด้วยคะแนนสูง
  */
 
+/* โหลดตรง ๆ เพื่อทดสอบฟังก์ชันคิดคะแนนแบบคุมค่าปัจจัยเองได้
+   บางเรื่อง เช่นรูปเส้นของปัจจัย ทดสอบผ่าน HTTP ไม่ได้
+   เพราะค่าที่ได้ขึ้นกับน้ำและอากาศจริงของวันนั้นซึ่งเราคุมไม่ได้ */
+require_once __DIR__ . '/../api/lib/scoring.php';
+
 $base = getenv('API_BASE');
 if (!is_string($base) || $base === '') {
     $base = 'http://127.0.0.1:8098';
@@ -104,7 +109,7 @@ const EXPECTED_STYLES = ['squid', 'bottom', 'jigging', 'popping', 'trolling', 's
 
 /** ปัจจัยร่วมทั้งหมดที่เอกสารระบุ */
 const EXPECTED_FACTORS = [
-    'water_movement', 'tidal_range', 'moon_darkness', 'solunar',
+    'water_movement', 'water_moderate', 'tidal_range', 'moon_darkness', 'solunar',
     'light_phase', 'wind_calm', 'wave_calm', 'dry',
 ];
 
@@ -126,9 +131,9 @@ const DOC_WEIGHTS = [
                    'light_phase' => 0.15, 'dry' => 0.10, 'solunar' => 0.05],
     'shore' => ['water_movement' => 0.30, 'light_phase' => 0.25, 'tidal_range' => 0.15,
                 'dry' => 0.10, 'wind_calm' => 0.10, 'wave_calm' => 0.10],
-    'lightgame' => ['wind_calm' => 0.30, 'water_movement' => 0.20, 'wave_calm' => 0.20,
+    'lightgame' => ['wind_calm' => 0.30, 'water_moderate' => 0.20, 'wave_calm' => 0.20,
                     'light_phase' => 0.15, 'solunar' => 0.10, 'dry' => 0.05],
-    'float' => ['wind_calm' => 0.30, 'wave_calm' => 0.25, 'water_movement' => 0.15,
+    'float' => ['wind_calm' => 0.30, 'wave_calm' => 0.25, 'water_moderate' => 0.15,
                 'light_phase' => 0.15, 'solunar' => 0.10, 'dry' => 0.05],
 ];
 
@@ -446,45 +451,39 @@ check('วันอื่น evaluated_at เป็นเที่ยงวั�
 
 echo "\n=== ทิศทางของปัจจัยตรงกับที่เอกสารอธิบาย ===\n";
 
-// ตกหมึกให้น้ำหนัก moon_darkness สูงสุด (0.30) — คืนเดือนมืดต้องดันคะแนนหมึกขึ้น
-// ตรวจโดยหาวันที่จันทร์สว่างต่างกันมากในช่วงที่ขอข้อมูลได้ แล้วเทียบคะแนนหมึก
-$darkest = null;
-$brightest = null;
-for ($i = 0; $i <= 7; $i++) {
-    $date = dayOffset($i);
-    $x = get($base . '/api/score.php?' . PATTANI . '&date=' . $date);
-    if ($x['status'] !== 200) {
-        continue;
-    }
-    $dark = $x['json']['data']['factors']['moon_darkness']['value'] ?? null;
-    $squid = null;
-    foreach ($x['json']['data']['styles'] ?? [] as $s) {
-        if (($s['key'] ?? '') === 'squid') {
-            $squid = ['dark' => (float) $dark, 'score' => (int) $s['score'], 'date' => $date];
-        }
-    }
-    if ($squid === null || $dark === null) {
-        continue;
-    }
-    if ($darkest === null || $squid['dark'] > $darkest['dark']) {
-        $darkest = $squid;
-    }
-    if ($brightest === null || $squid['dark'] < $brightest['dark']) {
-        $brightest = $squid;
-    }
+/* ตกหมึกให้น้ำหนัก moon_darkness สูงสุด (0.30) คืนเดือนมืดจึงต้องดันคะแนนหมึกขึ้น
+   ตรวจกับปัจจัยที่คุมเองทั้งชุด ไม่ใช่เทียบสองวันจริง
+
+   เคยเขียนแบบเทียบคะแนนหมึกของวันที่จันทร์มืดสุดกับสว่างสุดในเจ็ดวันข้างหน้า
+   ซึ่งใช้ได้เพราะตอนนั้นทุกวันได้สภาพอากาศชุดเดียวกัน (ของ "ตอนนี้") เป็นบั๊ก
+   พอแก้ให้แต่ละวันใช้พยากรณ์ของวันตัวเอง ลมกับฝนที่ต่างกันก็กลบผลของดวงจันทร์ได้
+   ข้อทดสอบจึงล้มโดยที่โค้ดไม่ได้ผิด — เป็นการทดสอบที่คุมตัวแปรไม่ได้ตั้งแต่แรก */
+$flatFactors = [];
+foreach (EXPECTED_FACTORS as $key) {
+    $flatFactors[$key] = ['value' => 0.5, 'note' => 'ค่าคงที่สำหรับทดสอบ'];
 }
 
-if ($darkest !== null && $brightest !== null && ($darkest['dark'] - $brightest['dark']) > 0.1) {
-    check('คืนที่มืดกว่าให้คะแนนตกหมึกสูงกว่า (moon_darkness ถ่วง 0.30)',
-          $darkest['score'] > $brightest['score'],
-          sprintf('มืด %.2f -> %d (%s) · สว่าง %.2f -> %d (%s)',
-                  $darkest['dark'], $darkest['score'], $darkest['date'],
-                  $brightest['dark'], $brightest['score'], $brightest['date']));
-} else {
-    check('ช่วง 7 วันมีความสว่างของดวงจันทร์ต่างกันพอจะตรวจทิศทางได้',
-          false,
-          'ความสว่างในช่วงนี้ต่างกันน้อยเกินไป');
-}
+$squidOf = static function (float $darkness) use ($flatFactors): float {
+    $factors = $flatFactors;
+    $factors['moon_darkness'] = ['value' => $darkness, 'note' => ''];
+    foreach (fis_score_all_styles($factors) as $style) {
+        if (($style['key'] ?? '') === 'squid') {
+            return (float) $style['score'];
+        }
+    }
+    return -1.0;
+};
+
+$darkNight = $squidOf(1.0);
+$brightNight = $squidOf(0.0);
+check('คืนที่มืดกว่าให้คะแนนตกหมึกสูงกว่า (moon_darkness ถ่วง 0.30)',
+      $darkNight > $brightNight, "มืด {$darkNight} · สว่าง {$brightNight}");
+
+/* ส่วนต่างต้องเท่ากับน้ำหนักของปัจจัยพอดี — จับกรณีที่น้ำหนักถูกแก้แต่ลืมแก้เอกสาร
+   ในทางที่ตารางน้ำหนักอย่างเดียวจับไม่ได้ */
+check('ส่วนต่างเท่ากับน้ำหนัก moon_darkness ของงานตกหมึก (30 คะแนน)',
+      abs(($darkNight - $brightNight) - 30.0) < 1.0,
+      'ส่วนต่าง ' . ($darkNight - $brightNight));
 
 // ตกชายฝั่งถ่วงลม/คลื่นน้อยกว่างานที่ต้องใช้เรือ เพราะไม่ต้องขึ้นเรือ
 $shoreW = 0.0;
@@ -501,6 +500,7 @@ foreach ($styles as $style) {
         }
     }
 }
+
 check('งานชายฝั่งถ่วงลม+คลื่นน้อยกว่างานที่ต้องใช้เรือ',
       $shoreW < $trollW, sprintf('ชายฝั่ง %.2f vs ทรอลลิ่ง %.2f', $shoreW, $trollW));
 
@@ -540,6 +540,46 @@ $post = request($base . '/api/score.php?' . PATTANI, 'POST');
 check('POST ถูกปฏิเสธด้วย 405', $post['status'] === 405, "ได้ {$post['status']}");
 check('405 คืน error.code = method_not_allowed',
       ($post['json']['error']['code'] ?? '') === 'method_not_allowed', substr($post['body'], 0, 120));
+
+echo "
+=== เส้นโค้ง water_moderate ===
+";
+
+/* ตรวจรูปเส้นตรง ๆ ไม่ผ่าน HTTP เพราะค่าที่ endpoint คืนขึ้นกับน้ำจริงของวันนั้น
+   ซึ่งควบคุมไม่ได้ จึงทดสอบทั้งเส้นผ่านคำขอจริงไม่ได้ */
+
+/** series ปลอมที่ชั่วโมงแรกไหลตามสัดส่วนที่ต้องการ และมีชั่วโมงที่ไหลเต็ม 1.0 เป็นแรงสุดของวัน */
+function fis_test_series(float $fraction): array
+{
+    $steps = [$fraction, 1.0, 0.0];
+    $series = [];
+    $height = 0.0;
+    foreach ($steps as $i => $step) {
+        $series[] = ['time' => sprintf('2026-01-01T%02d:00:00+07:00', $i), 'height_m' => $height];
+        $height += $step;
+    }
+    $series[] = ['time' => '2026-01-01T03:00:00+07:00', 'height_m' => $height];
+    return $series;
+}
+
+$curveAt = new DateTimeImmutable('2026-01-01 00:30:00', new DateTimeZone('Asia/Bangkok'));
+
+foreach ([['น้ำนิ่งสนิท', 0.00, 0.25],
+          ['ขอบล่างของช่วงดี', 0.30, 1.00],
+          ['กลางช่วงดี', 0.50, 1.00],
+          ['ขอบบนของช่วงดี', 0.70, 1.00],
+          ['แรงสุดของวัน', 1.00, 0.25]] as [$label, $fraction, $expected]) {
+    $got = fis_score_water_moderate(fis_test_series($fraction), $curveAt)['value'];
+    check("water_moderate: {$label} (สัดส่วน {$fraction}) ได้ {$expected}",
+          abs($got - $expected) < 0.02, 'ได้ ' . number_format($got, 4));
+}
+
+/* จุดสำคัญของการแก้รอบนี้ ถ้าข้อนี้ตกแปลว่าเผลอกลับไปใช้เส้นแบบยิ่งแรงยิ่งดีอีก */
+$strongFlow = fis_test_series(1.00);
+$weakGear = fis_score_water_moderate($strongFlow, $curveAt)['value'];
+$heavyGear = fis_score_water_movement($strongFlow, $curveAt)['value'];
+check('น้ำแรงสุด: อุปกรณ์เบาได้คะแนนน้อยกว่างานที่ชอบน้ำแรง',
+      $weakGear < $heavyGear, "เบา {$weakGear} หนัก {$heavyGear}");
 
 echo "\nผ่าน {$passed} ข้อ ไม่ผ่าน {$failed} ข้อ\n";
 exit($failed === 0 ? 0 : 1);
