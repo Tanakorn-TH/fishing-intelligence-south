@@ -2056,7 +2056,7 @@ body {
   .month-control,
   .close-planner,
   .change-spot,
-  .link-button {
+  .choose-spot {
     position: relative;
   }
 
@@ -2070,7 +2070,8 @@ body {
   .gear-style::after,
   .month-control::after,
   .close-planner::after,
-  .change-spot::after {
+  .change-spot::after,
+  .choose-spot::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -2082,6 +2083,17 @@ body {
 
   /* ช่องกรอกโตได้จริงโดยไม่กระทบใคร จึงเพิ่มความสูงตรง ๆ */
   .gear-depth input { min-height: 44px; }
+
+  /* ลิงก์อ้างอิงเป็น inline อยู่กลางย่อหน้า จึงใช้คนละวิธีกับปุ่ม
+     padding แนวตั้งบนอิลิเมนต์ inline ไม่ดันบรรทัดให้ห่างออก
+     กรอบกดจึงสูงขึ้นได้โดยที่ระยะบรรทัดเท่าเดิมเป๊ะ ไม่ต้องใช้ ::after
+     (วัดแล้วลิงก์พวกนี้อยู่ห่างจากของกดได้ตัวอื่นเกิน 170px จึงไม่มีทางกดทับกัน) */
+  .source-note a {
+    padding-top: 14px;
+    padding-bottom: 14px;
+    margin-top: -14px;
+    margin-bottom: -14px;
+  }
 
   /* ปุ่มบนแถบบนอยู่ติดกัน พอกรอบกดโตขึ้นทั้งคู่จะเริ่มทับกัน
      เพิ่มช่องไฟให้พอที่ปุ่มขวาไม่ไปกินขอบของปุ่มซ้าย */
