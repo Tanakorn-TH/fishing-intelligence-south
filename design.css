@@ -36,7 +36,19 @@
      เทคนิคนี้ยืมมาจาก ite-avm — ครอบคลุมกว่าการไล่ใส่คลาสให้ตัวเลขทีละจุด
      และไม่มีทางตกหล่นตอนเพิ่มหน้าใหม่ */
   --font-sans: 'Jost Num', 'Noto Sans Thai', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Jost Num', 'DM Mono', ui-monospace, monospace;
+  /* โมโนสเปซตาม ite-avm — JetBrains Mono แทน DM Mono
+     ต่างจาก ite-avm สองจุด และทั้งสองจุดคือการทำตาม "เจตนา" ของเขา ไม่ใช่ขัด:
+
+     1) 'Jost Num' ยังอยู่หน้าสุด — ite-avm จงใจไม่ใส่ไว้ใน --font-mono เพราะฝั่งเขา
+        --font-mono ใช้กับ "รหัสที่อ่านทีละตัว" (เลขครุภัณฑ์ ซีเรียล) ส่วนของเรา
+        22 selector ที่ใช้ตัวนี้เป็น "จำนวน" แทบทั้งหมด (ความสูงน้ำ ความเร็วลม
+        เวลา คะแนน) ซึ่งกฎของ ite-avm เองบอกให้ใช้ Jost ไม่ใช่ฟอนต์โค้ด
+        เพราะ JetBrains Mono พอขยายใหญ่แล้วดูแข็งและเชย
+
+     2) เติม 'Noto Sans Thai' ต่อท้าย — JetBrains Mono ไม่มีสระและวรรณยุกต์ไทย
+        สแปนที่ปนไทยกับตัวเลข เช่น "3.2 ม." จึงต้องมีที่ให้ตัวไทยตกลงไป
+        ite-avm ทำแบบนี้อยู่แล้ว ของเดิมเราตกหล่นข้อนี้ */
+  --font-mono: 'Jost Num', 'JetBrains Mono', 'Noto Sans Thai', ui-monospace, monospace;
   --font-num: 'Jost', 'Noto Sans Thai', ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -327,9 +339,9 @@ body {
 .hero-copy h1 { line-height: 1.3; }
 
 /* ═══ ตัวเลข ══════════════════════════════════════════════════════════
-   ทั้ง 20 selector นี้ styles.css กำหนด font-family เป็น "DM Mono" ไว้เอง
+   ทั้ง 20 selector นี้ styles.css กำหนด font-family เป็น "JetBrains Mono" ไว้เอง
    ซึ่งทับ stack หลัก ตัวเลขในนั้นจึงไม่ได้ Jost ถ้าไม่เติม 'Jost Num' ให้
-   DM Mono ยังทำหน้าที่เดิมกับตัวอักษรและเครื่องหมายทุกตัว */
+   JetBrains Mono ยังทำหน้าที่เดิมกับตัวอักษรและเครื่องหมายทุกตัว */
 .sidebar-label,
 .eyebrow,
 .major-window small,
@@ -1687,4 +1699,273 @@ body {
   font-size: 10px;
   line-height: 1.5;
   color: #7e9fa6;
+}
+
+/* ═══ ปุ่มกระจกเหลว ═══════════════════════════════════════════════════
+   ดัดแปลงจาก uiverse.io/shokat_2650/massive-snail-29 (MIT License)
+   https://uiverse.io/shokat_2650/massive-snail-29
+
+   ต้นฉบับเขียนสำหรับ "พื้นสว่าง" (ตัวอย่างใช้ #e8e8e8) ของเราเป็นธีมเข้ม
+   #061a27 จึงต้องกลับสีจริง ไม่ใช่ก๊อปวาง สิ่งที่เปลี่ยนและเหตุผล:
+
+   1) ต้นฉบับใช้ selector button เปล่า ๆ พร้อม all:unset
+      ถ้าเอามาตรง ๆ ปุ่มทั้ง 20 ตัวในเว็บจะถูกล้างสไตล์หมด
+      จึงผูกไว้กับ .liquid-btn เท่านั้น และใช้สองคลาสซ้อน
+      ให้ specificity ชนะ .catch-cta button ที่มีอยู่เดิมแน่นอน
+
+   2) ตัวอักษรต้นฉบับเป็น rgb(50,50,50) — เทาเข้มบนพื้นสว่าง
+      บนพื้นเข้มของเราจะจมหายไปเลย เปลี่ยนเป็น var(--text)
+
+   3) เส้นขอบวิ่งของต้นฉบับเป็นดำโปร่ง ซึ่งบนพื้นเข้มมองไม่เห็น
+      กลับเป็นขาว แล้วผูกเส้นฐานเข้ากับ --glass-line ที่โปรเจคใช้อยู่
+
+   4) ฟอนต์ต้นฉบับล็อกไว้ที่ Inter เปลี่ยนเป็น var(--font-sans)
+      และผ่อน letter-spacing จาก -.05em เหลือ -.01em เพราะการบีบอักษรไทย
+      ทำให้สระบนกับวรรณยุกต์ที่ซ้อนกันชนกัน
+
+   5) all:unset ล้าง outline ตอนโฟกัสไปด้วย ซึ่งทำให้คนใช้คีย์บอร์ดหลงทาง
+      เติม :focus-visible กลับตามแบบเดียวกับที่โปรเจคใช้อยู่ */
+
+@property --liquid-angle-1 {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: -75deg;
+}
+
+@property --liquid-angle-2 {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: -45deg;
+}
+
+.liquid-btn {
+  --liquid-time: 400ms;
+  --liquid-ease: cubic-bezier(.25, 1, .5, 1);
+  --liquid-border: clamp(1px, .0625em, 4px);
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  border-radius: 999vw;
+  background: transparent;
+  pointer-events: none;
+  transition: transform var(--liquid-time) var(--liquid-ease);
+}
+
+.liquid-btn > .liquid-btn-face {
+  all: unset;
+  position: relative;
+  z-index: 3;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  border-radius: 999vw;
+  /* ต้นฉบับไล่ขาว .05 ถึง .2 ซึ่งสว่างเกินบนพื้นเข้ม ลดลงให้ใกล้ --glass-bg เดิม
+     แต่ยังสว่างกว่าแผงกระจกทั่วไป เพราะปุ่มต้องอ่านออกว่ากดได้ */
+  background: linear-gradient(-75deg,
+    rgba(255, 255, 255, .06),
+    rgba(255, 255, 255, .16),
+    rgba(255, 255, 255, .06));
+  /* เพดานความทึบของเงา 0.2 — เจ้าของโปรเจคกำหนด ให้เข้าชุดกับ ite-avm
+     ต้นฉบับ uiverse ใช้ถึง .45 ซึ่งออกแบบมาสำหรับพื้นสว่าง บนพื้น #061a27
+     เงาดำเข้มขนาดนั้นแทบไม่ต่างจากพื้นอยู่แล้ว การลดลงจึงเสียน้อยกว่าที่คิด
+     ตัวแยกชั้นจริงของปุ่มนี้คือขอบไล่แสงกับแผ่นกระจก ไม่ใช่เงา */
+  box-shadow:
+    inset 0 .125em .125em rgba(0, 0, 0, .18),
+    inset 0 -.125em .125em rgba(255, 255, 255, .12),
+    0 .25em .125em -.125em rgba(0, 0, 0, .2),
+    0 0 .1em .25em inset rgba(255, 255, 255, .06);
+  -webkit-backdrop-filter: blur(clamp(1px, .125em, 4px));
+  backdrop-filter: blur(clamp(1px, .125em, 4px));
+  transition: transform var(--liquid-time) var(--liquid-ease),
+              box-shadow var(--liquid-time) var(--liquid-ease);
+}
+
+.liquid-btn > .liquid-btn-face:hover {
+  transform: scale(.975);
+  box-shadow:
+    inset 0 .125em .125em rgba(0, 0, 0, .18),
+    inset 0 -.125em .125em rgba(255, 255, 255, .12),
+    0 .15em .05em -.1em rgba(0, 0, 0, .2),
+    0 0 .05em .1em inset rgba(255, 255, 255, .14);
+}
+
+/* คีย์บอร์ดต้องเห็นว่าอยู่ตรงไหน ใช้กรอบเดียวกับ input ในฟอร์มอุปกรณ์ */
+.liquid-btn > .liquid-btn-face:focus-visible {
+  outline: 2px solid var(--aqua);
+  outline-offset: 3px;
+}
+
+.liquid-btn > .liquid-btn-face > span {
+  position: relative;
+  display: block;
+  padding-inline: 1.5em;
+  padding-block: .875em;
+  font-family: var(--font-sans);
+  font-size: 1em;
+  font-weight: 500;
+  letter-spacing: -.01em;
+  color: var(--text);
+  text-shadow: 0 .25em .05em rgba(0, 0, 0, .2);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-font-smoothing: antialiased;
+  transition: text-shadow var(--liquid-time) var(--liquid-ease);
+}
+
+.liquid-btn > .liquid-btn-face:hover > span {
+  text-shadow: .025em .025em .025em rgba(0, 0, 0, .2);
+}
+
+/* แสงกวาดผิวปุ่ม — screen บนพื้นเข้มคือการเพิ่มแสง ตรงตามที่ต้นฉบับตั้งใจ
+   แต่ลดความทึบลงจาก .5 เพราะบนพื้นเข้มมันแรงกว่าบนพื้นสว่างมาก */
+.liquid-btn > .liquid-btn-face > span::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--liquid-border) / 2);
+  left: calc(var(--liquid-border) / 2);
+  width: calc(100% - var(--liquid-border));
+  height: calc(100% - var(--liquid-border));
+  box-sizing: border-box;
+  border-radius: 999vw;
+  overflow: clip;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: linear-gradient(var(--liquid-angle-2),
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, .35) 40% 50%,
+    rgba(255, 255, 255, 0) 55%);
+  background-size: 200% 200%;
+  background-position: 0% 50%;
+  background-repeat: no-repeat;
+  transition:
+    background-position calc(var(--liquid-time) * 1.25) var(--liquid-ease),
+    --liquid-angle-2 calc(var(--liquid-time) * 1.25) var(--liquid-ease);
+}
+
+.liquid-btn > .liquid-btn-face:hover > span::after { background-position: 25% 50%; }
+
+.liquid-btn > .liquid-btn-face:active > span::after {
+  background-position: 50% 15%;
+  --liquid-angle-2: -15deg;
+}
+
+/* ขอบวิ่ง — ต้นฉบับใช้ดำบนพื้นสว่าง ของเรากลับเป็นขาวบนพื้นเข้ม */
+.liquid-btn > .liquid-btn-face::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  top: calc(0% - var(--liquid-border) / 2);
+  left: calc(0% - var(--liquid-border) / 2);
+  width: calc(100% + var(--liquid-border));
+  height: calc(100% + var(--liquid-border));
+  padding: var(--liquid-border);
+  box-sizing: border-box;
+  border-radius: 999vw;
+  background:
+    conic-gradient(from var(--liquid-angle-1) at 50% 50%,
+      rgba(255, 255, 255, .55),
+      rgba(255, 255, 255, .06) 5% 40%,
+      rgba(255, 255, 255, .55) 50%,
+      rgba(255, 255, 255, .06) 60% 95%,
+      rgba(255, 255, 255, .55)),
+    linear-gradient(180deg, var(--glass-line-top), var(--glass-line));
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  box-shadow: inset 0 0 0 calc(var(--liquid-border) / 2) rgba(255, 255, 255, .18);
+  transition: --liquid-angle-1 500ms ease;
+}
+
+.liquid-btn > .liquid-btn-face:hover::after  { --liquid-angle-1: -125deg; }
+.liquid-btn > .liquid-btn-face:active::after { --liquid-angle-1: -75deg; }
+
+/* เงาใต้ปุ่ม */
+.liquid-btn-shadow {
+  --liquid-shadow-fix: 2em;
+  position: absolute;
+  top: calc(0% - var(--liquid-shadow-fix) / 2);
+  left: calc(0% - var(--liquid-shadow-fix) / 2);
+  width: calc(100% + var(--liquid-shadow-fix));
+  height: calc(100% + var(--liquid-shadow-fix));
+  filter: blur(clamp(2px, .125em, 12px));
+  pointer-events: none;
+  overflow: visible;
+}
+
+.liquid-btn-shadow::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  top: calc(var(--liquid-shadow-fix) - .5em);
+  left: calc(var(--liquid-shadow-fix) - .875em);
+  width: calc(100% - var(--liquid-shadow-fix) - .25em);
+  height: calc(100% - var(--liquid-shadow-fix) - .25em);
+  padding: .125em;
+  box-sizing: border-box;
+  border-radius: 999vw;
+  /* คงทิศไล่เฉดเดิม (บนเข้มกว่าล่าง) แค่กดเพดานลงมาที่ .2 */
+  background: linear-gradient(180deg, rgba(0, 0, 0, .2), rgba(0, 0, 0, .11));
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  transition: top var(--liquid-time) var(--liquid-ease),
+              opacity var(--liquid-time) var(--liquid-ease);
+}
+
+.liquid-btn:has(.liquid-btn-face:hover) .liquid-btn-shadow {
+  filter: blur(clamp(2px, .0625em, 6px));
+}
+
+.liquid-btn:has(.liquid-btn-face:hover) .liquid-btn-shadow::after {
+  top: calc(var(--liquid-shadow-fix) - .875em);
+}
+
+/* กดแล้วปุ่มเอียงเข้าหาพื้น */
+.liquid-btn:has(.liquid-btn-face:active) { transform: rotate3d(1, 0, 0, 25deg); }
+
+.liquid-btn:has(.liquid-btn-face:active) .liquid-btn-shadow::after { opacity: .75; }
+
+.liquid-btn:has(.liquid-btn-face:active) > .liquid-btn-face > span {
+  text-shadow: .025em .25em .05em rgba(0, 0, 0, .2);
+}
+
+/* เครื่องที่ไม่มี hover จริง — ตรึงมุมไว้ ไม่งั้นค้างสถานะ hover หลังแตะ */
+@media (hover: none) and (pointer: coarse) {
+  .liquid-btn > .liquid-btn-face > span::after,
+  .liquid-btn > .liquid-btn-face:active > span::after { --liquid-angle-2: -45deg; }
+
+  .liquid-btn > .liquid-btn-face::after,
+  .liquid-btn > .liquid-btn-face:hover::after,
+  .liquid-btn > .liquid-btn-face:active::after { --liquid-angle-1: -75deg; }
+}
+
+/* backdrop-filter แพงมากบนเครื่องอ่อน ๆ ตามที่โปรเจคเตือนไว้ตั้งแต่ต้น
+   ถ้าเบราว์เซอร์ไม่รองรับ ให้ทึบขึ้นแทน จะได้ยังอ่านออกว่าเป็นปุ่ม */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .liquid-btn > .liquid-btn-face {
+    background: linear-gradient(-75deg,
+      rgba(255, 255, 255, .10),
+      rgba(255, 255, 255, .20),
+      rgba(255, 255, 255, .10));
+  }
+}
+
+/* ปิดการหมุนและการกวาดแสงให้คนที่ตั้งค่าลดการเคลื่อนไหว
+   คงเงาและขอบไว้ ปุ่มจึงยังดูเป็นปุ่มอยู่ แค่ไม่ขยับ */
+@media (prefers-reduced-motion: reduce) {
+  .liquid-btn,
+  .liquid-btn > .liquid-btn-face,
+  .liquid-btn > .liquid-btn-face > span,
+  .liquid-btn > .liquid-btn-face > span::after,
+  .liquid-btn > .liquid-btn-face::after,
+  .liquid-btn-shadow,
+  .liquid-btn-shadow::after { transition: none; }
+
+  .liquid-btn:has(.liquid-btn-face:active) { transform: none; }
+  .liquid-btn > .liquid-btn-face:hover { transform: none; }
 }
