@@ -7,9 +7,9 @@
     <title>คลื่นดี | Fishing Intelligence South</title>
     <link rel="preload" href="fonts/notosansthai-thai-400.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="fonts/jost-latin-500.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="fonts.css?v=0.9.8" />
-    <link rel="stylesheet" href="styles.css?v=0.9.8" />
-    <link rel="stylesheet" href="design.css?v=0.9.8" />
+    <link rel="stylesheet" href="fonts.css?v=0.9.9" />
+    <link rel="stylesheet" href="styles.css?v=0.9.9" />
+    <link rel="stylesheet" href="design.css?v=0.9.9" />
   </head>
   <body>
     <div class="aurora-bg" aria-hidden="true"></div>
@@ -41,9 +41,9 @@
 
       <main class="page-in">
         <header class="topbar">
-          <button type="button" class="menu-button press" aria-label="เปิดเมนู">☰</button>
+          <button type="button" class="menu-button icon-btn press" aria-label="เปิดเมนู">☰</button>
           <button type="button" class="location press" id="openPlacePicker" aria-haspopup="dialog"><span class="pin">⌖</span><span class="location-text"><b id="locationName">ปัตตานี</b><small id="locationCoords">พิกัดอ้างอิง —</small></span><span class="chevron">⌄</span></button>
-          <div class="top-actions"><button type="button" class="date-control press" id="openDatePicker" aria-haspopup="dialog">▣ <span id="todayLabel">—</span>⌄</button><button type="button" class="notification press" aria-label="การแจ้งเตือน">♧<em></em></button></div>
+          <div class="top-actions"><button type="button" class="date-control press" id="openDatePicker" aria-haspopup="dialog">▣ <span id="todayLabel">—</span>⌄</button><button type="button" class="notification icon-btn press" aria-label="การแจ้งเตือน">♧<em></em></button></div>
         </header>
 
         <p class="date-banner" id="dateBanner" hidden></p>
@@ -56,7 +56,7 @@
             <div class="major-window" id="majorWindow"><span class="pulse"></span><div><small>MAJOR TIME</small><b id="majorWindowValue">กำลังโหลด…</b></div><span class="window-arrow">↗</span></div>
           </div>
           <article class="score-card glass glass-raised spot rise" style="--i:1" aria-labelledby="scoreHeading">
-            <div class="score-top"><span id="scoreHeading">FISHING SCORE</span><button type="button" class="score-info press" id="scoreInfo" aria-expanded="false" aria-controls="scoreDetail">ที่มา</button></div>
+            <div class="score-top"><span id="scoreHeading">FISHING SCORE</span><button type="button" class="score-info icon-btn press" id="scoreInfo" aria-expanded="false" aria-controls="scoreDetail">ที่มา</button></div>
             <div class="state-slot" id="scoreState"></div>
             <div id="scoreBody" hidden>
               <div class="score-orbit"><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="82"/><circle class="progress" id="scoreRing" cx="100" cy="100" r="82"/></svg><div class="score-number"><b id="scoreValue">—</b><span>/100</span><small id="scoreLabel">—</small></div></div>
@@ -102,7 +102,7 @@
           </article>
 
           <article id="moon" class="panel solunar-panel glass spot rise" style="--i:7">
-            <div class="panel-heading"><div><p class="eyebrow">SOLUNAR</p><h2>จังหวะปลากิน</h2></div><button type="button" class="dots press" aria-label="เมนูเพิ่มเติม">•••</button></div>
+            <div class="panel-heading"><div><p class="eyebrow">SOLUNAR</p><h2>จังหวะปลากิน</h2></div><button type="button" class="dots btn btn-text press" aria-label="เมนูเพิ่มเติม">•••</button></div>
             <div class="moon-summary"><div class="moon" id="moonDisc"><div class="moon-shade" id="moonShade"></div></div><div><b id="moonPhase">—</b><small id="moonIllum">กำลังโหลด…</small></div><span>☾</span></div>
             <div class="time-block major"><div><span>●</span><b>Major Time</b></div><strong id="majorTime">—</strong><small id="majorTimeNote">กำลังโหลด…</small></div>
             <div class="time-block minor"><div><span>○</span><b>Minor Time</b></div><strong id="minorTime">—</strong><small id="minorTimeNote">กำลังโหลด…</small></div>
@@ -144,7 +144,7 @@
               <label for="gearDepth">ความลึกโดยประมาณ (เมตร)</label>
               <input id="gearDepth" type="number" min="0" max="1000" step="0.5" inputmode="decimal" placeholder="เช่น 4.5" />
             </div>
-            <button type="button" id="gearSubmit" class="gear-submit press">ดูอุปกรณ์</button>
+            <button type="button" id="gearSubmit" class="gear-submit btn btn-tonal press">ดูอุปกรณ์</button>
           </div>
           <ul class="gear-list" id="gearList" hidden></ul>
           <div class="state-slot" id="gearState"></div>
@@ -156,7 +156,7 @@
         </section>
 
         <footer class="site-footer rise" style="--i:12">
-          <p class="footer-brand">YRU FISHING <span class="footer-sep">•</span> <span id="appVersion">v0.9.8</span></p>
+          <p class="footer-brand">YRU FISHING <span class="footer-sep">•</span> <span id="appVersion">v0.9.9</span></p>
           <p>Designed &amp; Developed with <svg class="footer-heart" viewBox="0 0 24 24" role="img" aria-label="ความรัก"><path d="M12 21s-8.5-5.6-8.5-11A4.8 4.8 0 0 1 12 7a4.8 4.8 0 0 1 8.5 3c0 5.4-8.5 11-8.5 11z"/></svg> by YRU FISHING TEAM</p>
           <p class="footer-legal">© 2026 YRU FISHING TEAM. All rights reserved.</p>
         </footer>
@@ -164,18 +164,18 @@
     </div>
     <div class="toast" id="toast" role="status">เปิดฟอร์มบันทึกปลาแล้ว</div>
     <dialog class="planner-dialog" id="planner">
-      <div class="planner-head"><div><p class="eyebrow">TRIP PLANNER</p><h2>วางแผนทริปตกปลา</h2></div><button type="button" class="close-planner press" aria-label="ปิด">×</button></div>
+      <div class="planner-head"><div><p class="eyebrow">TRIP PLANNER</p><h2>วางแผนทริปตกปลา</h2></div><button type="button" class="close-planner icon-btn press" aria-label="ปิด">×</button></div>
       <section class="planner-step spot-step" id="spotStep">
         <div class="step-copy"><span>1</span><div><b>เริ่มจากเลือกหมาย</b><small>รายการหมายมาจากฐานข้อมูลจริง ยังไม่มีการกรอกพิกัดตัวอย่างไว้</small></div></div>
         <div class="spot-picker" id="spotPicker" hidden></div>
         <div class="state-slot" id="spotPickerState"></div>
-        <button type="button" class="show-calendar press" id="showCalendar" disabled>ดูปฏิทินพยากรณ์ <span>→</span></button>
+        <button type="button" class="show-calendar btn btn-tonal press" id="showCalendar" disabled>ดูปฏิทินพยากรณ์ <span>→</span></button>
       </section>
       <section class="calendar-step" id="calendarStep" hidden>
-        <div class="calendar-context"><span>2</span><div><b id="selectedSpotLabel">—</b><small>คะแนนรวม น้ำ, Solunar, ลม, คลื่น และฝน</small></div><button type="button" class="change-spot press">เปลี่ยนหมาย</button></div>
+        <div class="calendar-context"><span>2</span><div><b id="selectedSpotLabel">—</b><small>คะแนนรวม น้ำ, Solunar, ลม, คลื่น และฝน</small></div><button type="button" class="change-spot btn btn-text press">เปลี่ยนหมาย</button></div>
         <p class="datum-note" id="calendarNotice"></p>
         <div class="state-slot" id="calendarState"></div>
-        <div class="calendar-heading"><button type="button" class="month-control press" aria-label="เดือนก่อนหน้า" disabled>‹</button><h3><span id="calendarMonth">—</span> <small id="calendarYear">—</small></h3><button type="button" class="month-control press" aria-label="เดือนถัดไป" disabled>›</button></div>
+        <div class="calendar-heading"><button type="button" class="month-control icon-btn press" aria-label="เดือนก่อนหน้า" disabled>‹</button><h3><span id="calendarMonth">—</span> <small id="calendarYear">—</small></h3><button type="button" class="month-control icon-btn press" aria-label="เดือนถัดไป" disabled>›</button></div>
         <div class="calendar-week"><span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span></div>
         <div class="calendar-grid-wrap">
           <div class="calendar-grid" id="calendarGrid" role="group" aria-label="ปฏิทินคะแนนรายวัน"></div>
@@ -193,7 +193,7 @@
 
       <div class="picker-tools">
         <input type="search" id="placeSearch" placeholder="ค้นหาอำเภอหรือจังหวัด" autocomplete="off" enterkeyhint="search" />
-        <button type="button" class="use-gps press" id="useGps">⌖ ตำแหน่งของฉัน</button>
+        <button type="button" class="use-gps btn btn-ghost press" id="useGps">⌖ ตำแหน่งของฉัน</button>
       </div>
 
       <div class="map-wrap">
@@ -236,7 +236,7 @@
       <p class="datum-note" id="dateNotice"></p>
     </dialog>
 
-    <script src="map.js?v=0.9.8"></script>
-    <script src="app.js?v=0.9.8"></script>
+    <script src="map.js?v=0.9.9"></script>
+    <script src="app.js?v=0.9.9"></script>
   </body>
 </html>
