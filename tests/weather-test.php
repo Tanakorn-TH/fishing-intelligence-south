@@ -346,7 +346,8 @@ check('มีคีย์ chlorophyll (เป็น object หรือ null)', 
 
 $chl = $data['chlorophyll'] ?? null;
 if (is_array($chl)) {
-    foreach (['value_mg_m3', 'min_mg_m3', 'max_mg_m3', 'cells_used', 'observed_month', 'source'] as $field) {
+    foreach (['value_mg_m3', 'min_mg_m3', 'max_mg_m3', 'cells_used',
+              'observed_month', 'source', 'is_stale'] as $field) {
         check("chlorophyll มีคีย์ {$field}", array_key_exists($field, $chl));
     }
 
@@ -369,10 +370,23 @@ if (is_array($chl)) {
           preg_match('/^\d{4}-\d{2}$/', (string) ($chl['observed_month'] ?? '')) === 1,
           var_export($chl['observed_month'] ?? null, true));
 
+    /* ค่าที่เสิร์ฟจากของเก่าต้องติดธงมาเสมอ ไม่งั้นผู้ใช้จะเข้าใจว่าเพิ่งดึงมาสด ๆ */
+    check('is_stale เป็น boolean', is_bool($chl['is_stale'] ?? null),
+          var_export($chl['is_stale'] ?? null, true));
+
     /* ต้องบอกที่มาติดมากับข้อมูลเสมอ เป็นกติกาเดียวกับทุก endpoint ในโปรเจค */
     check('ระบุที่มาของข้อมูล',
           is_string($chl['source'] ?? null) && mb_strpos($chl['source'], 'ERDDAP') !== false,
           var_export($chl['source'] ?? null, true));
+} else {
+    /* null เป็นคำตอบที่ถูกต้องได้ (เมฆบังทั้งเดือน หรือ ERDDAP ล่มและไม่มีค่าเก่า)
+       จึงไม่ทำให้ชุดทดสอบตก แต่ต้องพิมพ์ออกมาให้เห็น
+       ไม่งั้นข้อตรวจสิบกว่าข้อจะหายไปเงียบ ๆ แล้วชุดทดสอบยังขึ้นว่าผ่าน
+       ซึ่งอันตรายกว่าการตก เพราะไม่มีใครรู้ว่ามันไม่ได้ตรวจอะไรเลย */
+    echo "  ข้าม   ข้อตรวจคลอโรฟิลล์ 11 ข้อ เพราะจุดนี้ไม่มีค่า (null)
+";
+    check('chlorophyll ที่เป็น null ต้องเป็น null จริง ไม่ใช่อาร์เรย์ว่าง',
+          $chl === null, var_export($chl, true));
 }
 
 echo "\nผ่าน {$passed} ข้อ ไม่ผ่าน {$failed} ข้อ\n";
