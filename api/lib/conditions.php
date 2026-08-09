@@ -333,9 +333,7 @@ function fis_chlorophyll_url(float $lat, float $lon): string
  */
 function fis_chlorophyll_parse(string $csv): ?array
 {
-    $lines = preg_split('/
-?
-/', trim($csv));
+    $lines = preg_split('/\r\n|\r|\n/', trim($csv));
     if ($lines === false || count($lines) < 3) {
         return null;
     }

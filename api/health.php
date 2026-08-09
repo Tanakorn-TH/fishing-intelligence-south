@@ -89,8 +89,7 @@ fis_handle(function (): void {
            อยู่ที่การแยก CSV ไม่ใช่การเชื่อมต่อ แยกสองอย่างนี้ให้เห็นตั้งแต่แรก */
         try {
             $csv = fis_remote_get_text(fis_chlorophyll_url(6.95, 101.48), 8);
-            $lines = preg_split('/?
-/', trim($csv));
+            $lines = preg_split('/\r\n|\r|\n/', trim($csv));
             $parsed = fis_chlorophyll_parse($csv);
             $upstream['chlorophyll-pipeline'] = [
                 'bytes' => strlen($csv),
