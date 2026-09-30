@@ -394,15 +394,17 @@ def write_seed_sql(marks):
         "",
         "INSERT INTO fishing_spots (name, province, fishing_style, geom, is_public) VALUES",
     ]
-    values = []
-    for mark in marks:
+    # จุลภาคคั่นแถวต้องอยู่หน้า -- เพราะ MySQL ถือว่าทุกอย่างหลัง -- จนสุดบรรทัดเป็นคอมเมนต์
+    # เคยต่อจุลภาคไว้หลังคอมเมนต์ แถวเลยติดกันเป็น syntax error ทั้งไฟล์
+    # และไม่มีใครรู้จนวันที่จะโหลดขึ้น production จริง (30 ก.ย. 2569) — CI โหลดไฟล์นี้ทุกครั้งแล้ว
+    last = len(marks) - 1
+    for i, mark in enumerate(marks):
         point = f"POINT({mark['lat']} {mark['lon']})"
-        values.append(
+        lines.append(
             f"  ({sql_string(mark['name'])}, {sql_string(mark['province'])}, 'bottom', "
-            f"ST_GeomFromText({sql_string(point)}, 4326), TRUE)"
+            f"ST_GeomFromText({sql_string(point)}, 4326), TRUE){',' if i < last else ''}"
             f"  -- {mark['kind']} · {mark['osm_type']}/{mark['osm_id']}"
         )
-    lines.append(",\n".join(values))
     # ชุดข้อมูลอัปเดตได้ รันซ้ำต้องไม่ระเบิดเพราะ unique key ชื่อ+จังหวัด
     lines.append("ON DUPLICATE KEY UPDATE geom = VALUES(geom), is_public = VALUES(is_public);")
     lines.append("")
