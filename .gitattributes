@@ -1,0 +1,4 @@
+# สคริปต์ bash ต้องเป็น LF เสมอ ต่อให้เครื่อง Windows ตั้ง core.autocrlf=true
+*.sh text eol=lf
+# cmd.exe อ่าน goto กับ label พลาดได้ถ้าไฟล์ .cmd เป็น LF
+*.cmd text eol=crlf

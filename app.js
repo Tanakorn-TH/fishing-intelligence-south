@@ -10,7 +10,7 @@
 /* เลขเวอร์ชัน — ที่นี่ที่เดียวเป็นแหล่งความจริง
    ปล่อยรุ่น = แก้เลขนี้ + สร้าง git tag ชื่อเดียวกัน (vX.Y.Z) แล้ว push tags
    ค่าใน index.html เป็นแค่ตัวสำรองตอน JS ยังไม่ทำงาน ต้องตรงกับค่านี้เสมอ */
-const APP_VERSION = '0.9.9';
+const APP_VERSION = '0.9.10';
 
 const TH_DAY_ABBR = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 const TH_MONTH_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -1712,16 +1712,27 @@ async function loadTides() {
 retryActions.tides = loadTides;
 
 /* ═══ หมายตกปลา — GET /api/spots.php ═══════════════════════════════════
-   ตาราง fishing_spots ยังว่าง สถานะ "ไม่มีข้อมูล" คือสถานะปกติของตอนนี้
-   ห้ามเติมหมายตัวอย่างลงไป ผู้ใช้จะเข้าใจผิดว่ามีพิกัดจริงให้ใช้ */
+   ตาราง fishing_spots มีเฉพาะหมายที่มีพิกัดเผยแพร่จริง (OpenStreetMap ผ่าน build-spots.py)
+   ห้ามเติมหมายตัวอย่างลงไป ผู้ใช้จะเข้าใจผิดว่ามีพิกัดจริงให้ใช้
+   ถ้าตารางว่าง สถานะ "ไม่มีข้อมูล" คือสิ่งที่ถูกต้อง */
 
 let loadedSpots = [];
 let selectedSpot = null;
 
+/* ชื่อตรงกับรูปแบบการตกใน api/lib/scoring.php และ gear_rules
+   ค่าที่ไม่รู้จักแสดงตามที่ได้มา ดีกว่าเดาชื่อไทยให้ผิด
+   หมายจาก OpenStreetMap เป็น bottom ทั้งหมด ก่อนมีชื่อนี้การ์ดจึงขึ้นคำอังกฤษ */
 function spotStyleLabel(style) {
-  if (style === 'shore') return 'ชายฝั่ง';
-  if (style === 'boat') return 'เรือ';
-  return style || 'ไม่ระบุรูปแบบ';
+  switch (style) {
+    case 'shore': return 'ชายฝั่ง';
+    case 'boat': return 'เรือ';
+    case 'bottom': return 'หน้าดิน';
+    case 'squid': return 'ตกหมึก';
+    case 'jigging': return 'จิ๊กกิ้ง';
+    case 'popping': return 'ป๊อปปิ้ง';
+    case 'trolling': return 'ทรอลลิ่ง';
+    default: return style || 'ไม่ระบุรูปแบบ';
+  }
 }
 
 function spotCardMarkup(spot) {

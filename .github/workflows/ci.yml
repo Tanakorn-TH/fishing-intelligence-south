@@ -81,6 +81,21 @@ jobs:
             exit 1
           fi
 
+      # ไฟล์นี้สร้างจาก build-spots.py และไม่เคยถูกโหลดใน CI มาก่อน
+      # เลยหลุดไปถึงวันที่จะโหลดขึ้น production ถึงเพิ่งรู้ว่าจุลภาคคั่นแถวไปอยู่ในคอมเมนต์
+      # รันสองรอบเพราะไฟล์ตั้งใจให้รันซ้ำได้ด้วย ON DUPLICATE KEY — รอบสองต้องไม่ error และไม่เพิ่มแถว
+      - name: ตรวจว่า seed หมายตกปลาโหลดได้และรันซ้ำได้
+        run: |
+          expected=$(grep -c "^  (" db/seed-fishing-spots.sql)
+          $MYSQL < db/seed-fishing-spots.sql
+          $MYSQL < db/seed-fishing-spots.sql
+          count=$($MYSQL -N -B -e 'SELECT COUNT(*) FROM fishing_spots;')
+          if [ "$count" != "$expected" ]; then
+            echo "fishing_spots ต้องมี $expected แถวหลัง seed แต่ได้ $count"
+            exit 1
+          fi
+          echo "seed โหลดได้ $count แถว และรันซ้ำไม่เกิดแถวซ้ำ"
+
       # กับดักที่อันตรายที่สุดของโปรเจค ถ้าลำดับแกนเปลี่ยน พิกัดทั้งระบบจะผิด
       - name: ตรวจลำดับแกน SRID 4326 ว่ายังเป็น Lat ก่อน Lon
         run: |
