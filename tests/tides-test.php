@@ -13,7 +13,8 @@ declare(strict_types=1);
  * จึงตรวจสองอย่างแทน:
  *   1. โครงสร้างและกติกาที่สัญญากำหนด ซึ่งตรวจได้เด็ดขาด
  *   2. ความสมเหตุสมผลเชิงฟิสิกส์ของน้ำ ซึ่งถ้าแบบจำลองเพี้ยนจะจับได้
- *      เช่น น้ำเกิดต้องมาใกล้เดือนดับ/เดือนเพ็ญ และช่วงน้ำต้องกว้างกว่าช่วงน้ำตายชัดเจน
+ *      เช่น ระดับน้ำ 15 วันต้องเต้นตามคาบของดวงจันทร์ และพิสัยต้องผันแปรตามรอบดาราศาสตร์
+ *      (เหตุที่ไม่ตรวจ "น้ำเกิดกว้างกว่าน้ำตาย" ตรง ๆ อยู่ในหัวข้อนั้นด้านล่าง)
  */
 
 $base = getenv('API_BASE');
@@ -268,7 +269,22 @@ check('แต่ยังมี extremes ให้ใช้วางแผนล
       is_array($other['json']['data']['extremes'] ?? null) && count($other['json']['data']['extremes']) >= 1);
 check('date สะท้อนวันที่ขอ', ($other['json']['data']['date'] ?? '') === dayOffset(3));
 
-echo "\n=== ความสมเหตุสมผลเชิงฟิสิกส์: น้ำเกิด-น้ำตายต้องตามดวงจันทร์ ===\n";
+echo "\n=== ความสมเหตุสมผลเชิงฟิสิกส์: ระดับน้ำต้องเต้นตามดวงจันทร์ ===\n";
+
+/**
+ * ความสูงรายชั่วโมงครบ 24 จุดของวันหนึ่ง จาก series — null ถ้าดึงไม่ได้หรือไม่ครบ
+ *
+ * @return list<float>|null
+ */
+function heightsFor(string $base, string $date): ?array
+{
+    $x = get($base . '/api/tides.php?' . PATTANI . '&date=' . $date);
+    $series = $x['json']['data']['series'] ?? null;
+    if (!is_array($series) || count($series) !== 24) {
+        return null;
+    }
+    return array_map(static fn($p) => (float) $p['height_m'], $series);
+}
 
 /**
  * ดึงพิสัยน้ำ (สูงสุด-ต่ำสุด) ของวันหนึ่ง จาก series
@@ -276,61 +292,169 @@ echo "\n=== ความสมเหตุสมผลเชิงฟิสิ�
  */
 function rangeFor(string $base, string $date): ?float
 {
-    $x = get($base . '/api/tides.php?' . PATTANI . '&date=' . $date);
-    $series = $x['json']['data']['series'] ?? null;
-    if (!is_array($series) || $series === []) {
-        return null;
-    }
-    $heights = array_map(static fn($p) => (float) $p['height_m'], $series);
-    return max($heights) - min($heights);
+    $heights = heightsFor($base, $date);
+    return $heights === null ? null : max($heights) - min($heights);
 }
 
-/** เปอร์เซ็นต์สว่างของดวงจันทร์วันนั้น จาก endpoint ของเราเอง */
-function illumFor(string $base, string $date): ?int
+/**
+ * ความเร็วเชิงมุมของแรงไทด์หลัก (องศาต่อชั่วโมง) ค่ามาตรฐานที่ใช้กันทั่วไปในงานวิเคราะห์น้ำ
+ * 15 วันพอแยก M2 กับ S2 (ต้อง 14.8 วัน) และ K1 กับ O1 (ต้อง 13.7 วัน) ออกจากกันได้
+ */
+const TIDAL_SPEEDS = [
+    'M2' => 28.9841042, // ครึ่งวัน ตามดวงจันทร์ คาบ 12.42 ชม.
+    'S2' => 30.0,       // ครึ่งวัน ตามดวงอาทิตย์ คาบ 12.00 ชม.
+    'N2' => 28.4397295, // ครึ่งวัน จากดวงจันทร์ใกล้-ไกลโลก
+    'K1' => 15.0410686, // รายวัน ดวงจันทร์และดวงอาทิตย์
+    'O1' => 13.9430356, // รายวัน ดวงจันทร์
+];
+
+/**
+ * ฟิตระดับน้ำรายชั่วโมงด้วยคลื่นไซน์ที่คาบใน TIDAL_SPEEDS + ค่าเฉลี่ย + แนวโน้มเส้นตรง
+ * (แนวโน้มไว้กินน้ำยกตัวช้า ๆ ช่วงมรสุม ซึ่งไม่ใช่ไทด์) ด้วย least squares แบบ normal equations
+ * ตัวแปรมีแค่ 12 ตัว Gaussian elimination ธรรมดาก็พอ
+ *
+ * @param array<int, float> $hourly ชั่วโมงที่ (นับจากจุดเริ่มเดียวกัน) => ความสูง
+ * @return array{r2: float, amp: array<string, float>} amp = แอมพลิจูดของแต่ละคาบ (เมตร)
+ */
+function tidalFit(array $hourly): array
 {
-    $x = get($base . '/api/solunar.php?' . PATTANI . '&date=' . $date);
-    $v = $x['json']['data']['moon']['illumination_pct'] ?? null;
-    return is_int($v) ? $v : null;
+    $hours = array_keys($hourly);
+    $mid = (min($hours) + max($hours)) / 2;
+
+    $rows = [];
+    foreach ($hourly as $hour => $height) {
+        $row = [1.0, ($hour - $mid) / 24.0];
+        foreach (TIDAL_SPEEDS as $speed) {
+            $angle = deg2rad($speed * $hour);
+            $row[] = cos($angle);
+            $row[] = sin($angle);
+        }
+        $rows[$hour] = $row;
+    }
+
+    $n = 2 + 2 * count(TIDAL_SPEEDS);
+    $a = array_fill(0, $n, array_fill(0, $n, 0.0));
+    $b = array_fill(0, $n, 0.0);
+    foreach ($rows as $hour => $row) {
+        for ($r = 0; $r < $n; $r++) {
+            $b[$r] += $row[$r] * $hourly[$hour];
+            for ($c = 0; $c < $n; $c++) {
+                $a[$r][$c] += $row[$r] * $row[$c];
+            }
+        }
+    }
+
+    $failed = ['r2' => 0.0, 'amp' => array_fill_keys(array_keys(TIDAL_SPEEDS), 0.0)];
+    for ($p = 0; $p < $n; $p++) {
+        $pivot = $p;
+        for ($r = $p + 1; $r < $n; $r++) {
+            if (abs($a[$r][$p]) > abs($a[$pivot][$p])) {
+                $pivot = $r;
+            }
+        }
+        if (abs($a[$pivot][$p]) < 1e-9) {
+            return $failed; // ข้อมูลน้อยเกินจะแยกคาบได้
+        }
+        [$a[$p], $a[$pivot]] = [$a[$pivot], $a[$p]];
+        [$b[$p], $b[$pivot]] = [$b[$pivot], $b[$p]];
+        for ($r = $p + 1; $r < $n; $r++) {
+            $f = $a[$r][$p] / $a[$p][$p];
+            for ($c = $p; $c < $n; $c++) {
+                $a[$r][$c] -= $f * $a[$p][$c];
+            }
+            $b[$r] -= $f * $b[$p];
+        }
+    }
+    $coef = array_fill(0, $n, 0.0);
+    for ($r = $n - 1; $r >= 0; $r--) {
+        $sum = $b[$r];
+        for ($c = $r + 1; $c < $n; $c++) {
+            $sum -= $a[$r][$c] * $coef[$c];
+        }
+        $coef[$r] = $sum / $a[$r][$r];
+    }
+
+    $mean = array_sum($hourly) / count($hourly);
+    $ssTotal = 0.0;
+    $ssResidual = 0.0;
+    foreach ($rows as $hour => $row) {
+        $fitted = 0.0;
+        foreach ($row as $c => $v) {
+            $fitted += $v * $coef[$c];
+        }
+        $ssTotal += ($hourly[$hour] - $mean) ** 2;
+        $ssResidual += ($hourly[$hour] - $fitted) ** 2;
+    }
+    if ($ssTotal <= 0.0) {
+        return $failed; // เส้นตรงแบน ไม่มีอะไรให้อธิบาย
+    }
+
+    $amp = [];
+    $k = 2;
+    foreach (array_keys(TIDAL_SPEEDS) as $name) {
+        $amp[$name] = hypot($coef[$k], $coef[$k + 1]);
+        $k += 2;
+    }
+    return ['r2' => 1.0 - $ssResidual / $ssTotal, 'amp' => $amp];
 }
 
-// ต้องใช้ช่วงยาวราวสองสัปดาห์จึงจะเจอทั้งวันน้ำเกิดและวันน้ำตาย (รอบน้ำเกิด->น้ำตาย ~7.4 วัน)
+// ทำไมไม่ตรวจ "พิสัยวันน้ำเกิดกว้างกว่าวันน้ำตาย" ตรง ๆ แบบที่ชุดนี้เคยทำ:
+// ชุดเดิมแบ่งวันตามเปอร์เซ็นต์สว่างของดวงจันทร์ (≤12% หรือ ≥88% = น้ำเกิด, 38-62% = น้ำตาย)
+// แล้วบังคับให้พิสัยเฉลี่ยต่างกันอย่างน้อย 10% — ผ่านเมื่อ 9 ส.ค. 2569 (1.57 เท่า)
+// แต่ล้มเมื่อ 30 ก.ย. 2569 (1.06 เท่า) ทั้งที่โค้ดและข้อมูลไม่ได้ผิด
+// เพราะพิสัยรายวันที่จุดนี้ถูกดันด้วยสามรอบที่แรงพอ ๆ กัน ไม่ใช่รอบเดียว (แอมพลิจูดจากการฟิตข้อมูลทั้งปี)
+//   - ข้างขึ้นข้างแรม (S2 ~0.04 ม.) รอบ 14.8 วัน — น้ำเกิดน้ำตายตามตำรา
+//   - ดวงจันทร์ใกล้-ไกลโลก (N2 ~0.05 ม. แรงกว่า S2 เสียอีก) รอบ 27.6 วัน
+//   - declination ของดวงจันทร์ (K1+O1 ~0.14 ม.) รอบ 13.7 วัน และที่จุดนี้มาช้ากว่า declination ราว 3 วัน
+// ในหน้าต่าง 15 วันสามรอบนี้หักล้างกันได้ ช่วง 23 ก.ย.-7 ต.ค. 2569 วันน้ำเกิดตรงกับช่วงที่ส่วนรายวัน
+// เกือบเป็นศูนย์ ส่วนวันน้ำตายตรงกับช่วงที่ส่วนรายวันแรงสุด พิสัยเลยออกมาแทบเท่ากัน
+// ไล่เกณฑ์เดิมกับข้อมูล Open-Meteo จริงทุกหน้าต่าง 15 วัน ตั้งแต่ 2 ต.ค. 2568 ถึง 8 ต.ค. 2569
+// ล้ม 93 จาก 358 หน้าต่าง (26%) และ 38 หน้าต่างในนั้นวันน้ำตายกว้างกว่าวันน้ำเกิดเสียอีก
+// แบ่งวันตาม declination แทนยิ่งแย่ (ล้ม 290 หน้าต่าง) เพราะส่วนรายวันมาช้ากว่า declination
+// และ form factor (K1+O1)/(M2+S2) ของจุดนี้ ≈ 0.66 คือน้ำผสมค่อนไปทางน้ำคู่ ไม่ใช่น้ำเดี่ยว
+//
+// จึงตรวจสามข้อข้างล่างแทน ซึ่งจริงทุกหน้าต่างตลอดปีนั้น และข้อมูลที่พังแบบต่าง ๆ ไม่ผ่าน
+// ("จริง" = ค่าที่แย่ที่สุดตลอดปี · ที่เหลือ = ข้อมูลปลอมที่จำลองขึ้นมาลองเกณฑ์)
+//   1. R² ≥ 0.40   จริง 0.53 (มรสุม พ.ย. 2568) · สุ่มล้วน 0.03 · เอาวันจริงมาสลับลำดับ 0.24
+//   2. M2 ใหญ่กว่าทุกคาบอื่น   จริง M2 ≥ 1.19 เท่าของตัวรองลงมา (K1)
+//      · วงจรกลางวัน-กลางคืนตามดวงอาทิตย์ (เช่นได้อุณหภูมิน้ำมาแทน) K1 ใหญ่สุด M2 แทบเป็นศูนย์
+//      · ทุกวันได้ข้อมูลวันเดียวกันซ้ำ (แคชไม่แยกวันที่) เป็นคาบ 24 ชม. พอดี ไม่มี M2 เลย
+//      ปีที่วัดอยู่ใกล้ major lunar standstill ซึ่ง K1 แรงสุดและ M2 อ่อนสุดในรอบ 18.6 ปี
+//      ช่องว่าง 19% นี้จึงเป็นกรณีแย่ที่สุดแล้ว ปีอื่นจะห่างกว่านี้
+//   3. พิสัยกว้างสุด ≥ 1.15 × แคบสุด   จริง 1.24 · M2 ล้วนแอมพลิจูดคงที่ 1.00 · ข้อมูลวันเดียวกันซ้ำ 1.00
 // พยากรณ์ล่วงหน้าได้แค่ 7 วัน จึงสแกนย้อนหลังควบไปด้วย — ข้อมูลอดีตย้อนได้ถึง 365 วัน
-$springRanges = [];
-$neapRanges = [];
-$scanned = 0;
+$hourly = [];
+$dailyRanges = [];
 for ($i = -7; $i <= 7; $i++) {
-    $date = dayOffset($i);
-    $illum = illumFor($base, $date);
-    $range = rangeFor($base, $date);
-    if ($illum === null || $range === null) {
+    $heights = heightsFor($base, dayOffset($i));
+    if ($heights === null) {
         continue;
     }
-    $scanned++;
-    // ใกล้เดือนดับ (0%) หรือเดือนเพ็ญ (100%) = แรงดึงดูดเสริมกัน -> น้ำเกิด
-    if ($illum <= 12 || $illum >= 88) {
-        $springRanges[] = $range;
+    foreach ($heights as $h => $value) {
+        $hourly[($i + 7) * 24 + $h] = $value;
     }
-    // ใกล้ครึ่งดวง = แรงดึงดูดหักล้างกัน -> น้ำตาย
-    if ($illum >= 38 && $illum <= 62) {
-        $neapRanges[] = $range;
-    }
+    $dailyRanges[] = max($heights) - min($heights);
 }
+$scanned = count($dailyRanges);
 
 check('สแกนได้อย่างน้อย 12 วันเพื่อใช้ตรวจ', $scanned >= 12, "สแกนได้ {$scanned} วัน");
-check('ช่วง 15 วันครอบคลุมทั้งวันน้ำเกิดและวันน้ำตาย',
-      $springRanges !== [] && $neapRanges !== [],
-      'น้ำเกิด ' . count($springRanges) . ' วัน · น้ำตาย ' . count($neapRanges) . ' วัน');
 
-if ($springRanges !== [] && $neapRanges !== []) {
-    $avgSpring = array_sum($springRanges) / count($springRanges);
-    $avgNeap = array_sum($neapRanges) / count($neapRanges);
-    check('พิสัยน้ำวันน้ำเกิดกว้างกว่าวันน้ำตาย (ฟิสิกส์ของน้ำเกิดน้ำตาย)',
-          $avgSpring > $avgNeap,
-          sprintf('น้ำเกิดเฉลี่ย %.2f ม. · น้ำตายเฉลี่ย %.2f ม.', $avgSpring, $avgNeap));
-    // ถ้าต่างกันน้อยกว่า 10% แปลว่าแทบไม่ตอบสนองต่อดวงจันทร์ ซึ่งผิดธรรมชาติของน้ำจริง
-    check('ความต่างมากพอที่จะไม่ใช่ความบังเอิญ (อย่างน้อย 10%)',
-          $avgNeap > 0 && ($avgSpring / $avgNeap) >= 1.10,
-          sprintf('อัตราส่วน %.2f เท่า', $avgNeap > 0 ? $avgSpring / $avgNeap : 0));
+if ($scanned >= 12) {
+    $fit = tidalFit($hourly);
+    check('ระดับน้ำ 15 วันเป็นน้ำขึ้นน้ำลงจริง (คาบดาราศาสตร์อธิบายได้อย่างน้อย 40%)',
+          $fit['r2'] >= 0.40,
+          sprintf('R² %.2f', $fit['r2']));
+    $others = $fit['amp'];
+    unset($others['M2']);
+    check('น้ำครึ่งวันตามดวงจันทร์ (M2 คาบ 12.42 ชม.) เป็นจังหวะหลัก ใหญ่กว่าทุกคาบอื่นที่ฟิต',
+          $fit['amp']['M2'] > max($others),
+          implode(' · ', array_map(static fn(string $name, float $amp): string => sprintf('%s %.3f', $name, $amp),
+                                   array_keys($fit['amp']), $fit['amp'])) . ' ม.');
+    $narrowest = min($dailyRanges);
+    $widest = max($dailyRanges);
+    check('พิสัยรายวันผันแปรตามรอบดาราศาสตร์ (วันกว้างสุดกว้างกว่าวันแคบสุดอย่างน้อย 15%)',
+          $narrowest > 0 && $widest >= 1.15 * $narrowest,
+          sprintf('แคบสุด %.2f ม. · กว้างสุด %.2f ม.', $narrowest, $widest));
 }
 
 echo "\n=== พิสัยน้ำอยู่ในระดับที่เป็นไปได้จริงของอ่าวไทย ===\n";
